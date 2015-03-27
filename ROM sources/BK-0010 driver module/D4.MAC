@@ -1,0 +1,820 @@
+
+
+
+
+
+; ======================================
+; ***** лндскэ тнплхпнбюмхъ ярпнйх *****
+; ======================================
+
+
+;	бунд:	R1 - юдпея ярпнйх
+;		R2 - дкхмю ярпнйх (лк.а.)
+;		   - яхлбнк - нцпюмхвхрекэ (яр.а.)
+
+
+MFSTR:	MOV	R0,-(SP)
+	MOV	R3,-(SP)
+
+	MOV	R2,R3		;  ондцнрнбйю нцпюмхвхрекеи
+	SWAB	R3
+	BIC	#177400,R2
+
+1$:	MOVB	(R1)+,R0	;  гюохяэ ярпнйх
+	JSR	PC,MFSIM
+	CMPB	R0,R3
+	BEQ	KMFSTR
+	SOB	R2,1$
+
+KMFSTR:	MOV	(SP)+,R3
+	MOV	(SP)+,R0
+	RTS	PC
+
+
+
+
+
+; ======================================
+; ***** лндскэ гюохях яхлбнкю б яя *****
+; ======================================
+
+
+;	бунд:	R0 - йнд яхлбнкю (0 - яапня ярпнйх)
+;		R1 - мнлеп онгхжхх б яя
+
+
+MZSSS:	JSR	R4,PSREG
+
+	TST	R0
+	BNE	1$
+
+	JSR	PC,PFSSTR	;  яапня яя
+	BR	KMZSSS
+
+1$:	CMPB	R0,#177		;  ондцнр. юдп. хгнапюф.
+	BHI	3$
+	CMPB	R0,#10
+	BNE	4$
+	MOV	#21,R0
+4$:	SUB	#20,R0
+	BMI	KMZSSS
+	BR	5$
+3$:	CMPB	R0,#237
+	BLOS	KMZSSS
+	SUB	#60,R0
+
+5$:	JSR	PC,PFSSS	;  тнплхпнбюмхе яхлбнкю
+
+KMZSSS:	JSR	R4,PWREG
+	RTS	PC
+
+
+;    ----------------------------------
+;    ** 1. тнплхпнбюмхе яхлбнкю б яя **
+;    ----------------------------------
+
+PFSSS:	MOV	R1,-(SP)	;  R0 - ялеыемхе хгнапюфемхъ
+	MOV	R2,-(SP)	;  R1 - мнлеп онгхжхх б ярпнйе
+
+	TSTB	PRCW		;  ондц. юдп.
+	BEQ	1$
+	ASL	R1
+1$:	BIC	#177700,R1
+	ADD	BAZVP,R1
+	SUB	#1700,R1
+	BIC	#140000,R1
+	ADD	ANVP,R1
+
+	MOV	AS,-(SP)	;  тнплхпнбюмхе яхлбнкю
+	MOV	R1,AS
+	BIC	#177400,R0
+	JSR	PC,PFSIM
+	MOV	(SP)+,AS
+
+KFSSS:	MOV	(SP)+,R2
+	MOV	(SP)+,R1
+	RTS	PC
+
+
+
+
+
+; ==============================================
+; ***** лндскэ сярюмнбйх йннпдхмюр йспянпю *****
+; ==============================================
+
+
+;	бунд:	R1 - йннпдхмюрю X
+;		R2 - йннпдхмюрю Y
+
+
+MUSTKK:	JSR	R4,PSREG
+	JSR	PC,PSTK
+	MOV	2(SP),R1
+	MOV	4(SP),R2
+
+	TSTB	PRCW		;  ондц. йннпд. X
+	BEQ	1$
+	ASL	R1
+
+1$:	MOV	#6,R0		;  ондц. йннпд. Y
+2$:	ASL	R2
+	SOB	R0,2$
+
+	TSTB	PRGRAF
+	BNE	PUKGK
+
+
+;    ------------------------------------------------
+;    ** 1. сярюмнбйю йннпдхмюр яхлбнкэмнцн йспянпю **
+;    ------------------------------------------------
+
+PUKSK:	BIC	#177700,R1	;  ондц. йннпд. X
+
+1$:	SUB	KSVP,R2		;  ондц. йннпд. Y
+	BPL	1$
+2$:	ADD	KSVP,R2
+	BMI	2$
+
+	ADD	R1,R2		;  тнпл. юдп. яхлбнкю
+	MOV	R2,NOMSIM
+	CLR	R5
+	JSR	PC,PFASIM
+
+	BR	KUSTKK
+
+
+;    -------------------------------------------------
+;    ** 2. сярюмнбйю йннпдхмюр цпютхвеяйнцн йспянпю **
+;    -------------------------------------------------
+
+PUKGK:	BIC	#177000,R1	;  ондц. йннпд. X
+1$:	MOV	R1,R3
+	ASR	R1
+	ASR	R1
+	ASR	R1
+
+	MOVB	NMPGT,R0	;  ондц. MASPGT
+	BIC	#177770,R3
+	BEQ	2$
+3$:	ASL	R0
+	SOB	R3,3$
+2$:	MOVB	R0,MASPGT
+
+4$:	SUB	DGPB,R2		;  ондц. йннпд. Y
+	BPL	4$
+5$:	ADD	DGPB,R2
+	BMI	5$
+
+	ADD	R1,R2		;  бшвхякемхе AGTVP
+	MOV	R2,AGTVP
+
+	CLR	R1		;  бшв. AGT
+	CLR	R2
+	JSR	PC,PFAGT
+
+KUSTKK:	JSR	PC,PFK
+	JSR	R4,PWREG
+	RTS	PC
+
+
+
+
+
+; ==========================================
+; ***** лндскэ я'елю йннпдхмюр йспянпю *****
+; ==========================================
+
+
+;	бшунд:	R1 - йннпдхмюрю X
+;		R2 - йннпдхмюрю Y
+
+
+MSKK:	MOV	R0,-(SP)
+
+	TSTB	PRGRAF
+	BNE	PSKGK
+
+
+;    -------------------------------------------
+;    ** 1. я'ел йннпдхмюр яхлбнкэмнцн йспянпю **
+;    -------------------------------------------
+
+PSKSK:	MOV	NOMSIM,R1	;  йннпд. X
+	MOV	R1,R2
+	BIC	#177700,R1
+
+	BR	PSK1
+
+
+;    --------------------------------------------
+;    ** 2. я'ел йннпдхмюр цпютхвеяйнцн йспянпю **
+;    --------------------------------------------
+
+PSKGK:	MOV	AGTVP,R1	;  йннпд. X
+	MOV	R1,R2
+	BIC	#177700,R1
+	ASL	R1
+	ASL	R1
+	ASL	R1
+	MOVB	MASPGT,R0
+2$:	ASR	R0
+	BCS	PSK1
+	INC	R1
+	BR	2$
+
+PSK1:	TSTB	PRCW
+	BEQ	3$
+	ASR	R1
+
+3$:	BIC	#77,R2		;  йннпд. Y
+	MOV	#6,R0
+4$:	ASR	R2
+	SOB	R0,4$
+
+	MOV	(SP)+,R0
+	RTS	PC
+
+
+
+
+
+; =====================================
+; ***** лндскэ тнплхпнбюмхъ рнвйх *****
+; =====================================
+
+
+;	бунд:	R0 - 1-гюохяэ, 0-ярхпюмхе
+;		R1 - йннпдхмюрю X
+;		R2 - йннпдхмюрю Y
+
+
+MFTCK:	MOV	R1,BUFX		;  януп. йннпд.
+	MOV	R2,BUFY
+	MOVB	R0,PRZTCK
+
+MFTCK1:	JSR	R4,PSREG	;  януп. пец.
+
+	TSTB	PRCW		;  ондц. йннпд. X
+	BEQ	1$
+	ASL	R1
+	BCS	KMFTCK
+1$:	CMP	R1,#1000
+	BHIS	KMFTCK
+
+	MOV	#6,R0		;  ондц. йннпд. Y
+2$:	ASL	R2
+	BCS	KMFTCK
+	SOB	R0,2$
+	CMP	R2,DGPB
+	BHIS	KMFTCK
+
+	MOV	R1,R3		;  тнпл. юдп. рнвйх
+	ASR	R1
+	ASR	R1
+	ASR	R1
+	ADD	R2,R1
+	ADD	BAZVP,R1
+	BIC	#140000,R1
+	ADD	ANVP,R1
+
+	MOVB	NMPGT,R2	;  тнплхпнбюмхе люяйх рнвйх
+	BIC	#177770,R3
+	BEQ	3$
+4$:	ASL	R2
+	SOB	R3,4$
+
+3$:	MOVB	(R1),R0		;  тнплхпнбюмхе рнвйх
+	BICB	R2,R0
+	MOV	MASCW,R3
+	TSTB	PRZTCK
+	BNE	5$
+	MOV	FON,R3
+5$:	COM	R2
+	BIC	R2,R3
+	BISB	R3,R0
+	MOVB	R0,(R1)
+
+KMFTCK:	JSR	R4,PWREG	;  бняяр. пец.
+	RTS	PC
+
+
+
+
+
+; =======================================
+; ***** лндскэ тнплхпнбюмхъ бейрнпю *****
+; =======================================
+
+
+;	бунд:	R0 - 1-гюохяэ, 0-ярхпюмхе
+;		R1 - йннпдхмюрю X
+;		R2 - йннпдхмюрю Y
+
+
+MFWEKT:	JSR	R4,PSREG
+	MOVB	R0,PRZTCK
+
+	MOV	R1,R3		;  гюлемю йннпдхмюр
+	MOV	R2,R4
+	MOV	BUFX,R1
+	MOV	BUFY,R2
+	MOV	R3,BUFX
+	MOV	R4,BUFY
+
+	CLR	R0		;  нопед. DX х мюопюбкемхъ
+	SUB	R1,R3
+	BMI	1$
+	BEQ	2$
+	INC	R0
+	BR	2$
+1$:	DEC	R0		;- мюопюбкемхе
+	NEG	R3		;- DX
+
+2$:	CLR	R5		;  нопед. DY х мюопюбкемхъ
+	SUB	R2,R4
+	BMI	3$
+	BEQ	4$
+	INC	R5
+	BR	4$
+3$:	DEC	R5		;- мюопюбкемхе
+	NEG	R4		;- DY
+
+4$:	CMP	R4,R3		;  нопед. дкхммни йннпд.
+	BHI	5$
+	MOV	R5,-(SP)	;- DX >= DY
+	CLR	-(SP)
+	MOV	R3,R5
+	MOV	R4,R3
+	MOV	R5,R4		;- R4 - дкхммюъ йннпд.
+	CLR	R5
+	BR	6$
+5$:	CLR	-(SP)		;- DX < DY
+	MOV	R0,-(SP)
+	CLR	R0		;- R0,R5 - Dяецл. (SP) - Dйннпд.
+
+6$:	CLR	-(SP)		;  нопед. оюпюл. бейрнпю
+	TST	R3
+	BNE	7$
+	INC	R3		;- няебни бейрнп
+	SUB	#12,SP
+	BR	8$
+7$:	SUB	R3,R4		;- бшвхякемхе дкхмш яецл.
+	BMI	9$
+	INC	(SP)		;- дкхмю яецлемрю
+	BR	7$
+9$:	ADD	R3,R4		;- R3 - яв. яецл. R4 - нярюрнй
+	MOV	R3,-(SP)	;- йнкхв. яецл.
+	MOV	R3,-(SP)
+	ASR	(SP)		;- йнкхв. яецл./2
+	MOV	R4,-(SP)	;- нярюрнй
+	CLR	-(SP)
+	CLR	-(SP)
+	CLR	R4
+
+11$:	ADD	4(SP),2(SP)	;  нопед. дкхмш яецл.
+	BEQ	10$
+	CMP	2(SP),6(SP)
+	BLE	10$
+	INC	R4
+	SUB	10(SP),2(SP)
+10$:	ADD	12(SP),R4
+	MOV	R4,(SP)
+	ASR	R4
+	SUB	R4,(SP)		;- дкхмю 2-цн онксяецл.
+
+	JSR	PC,PFSEGM	;- тнпл. 1-цн онксяецл.
+	ADD	14(SP),R1
+	ADD	16(SP),R2
+	MOV	(SP),R4
+8$:	JSR	PC,PFSEGM	;- тнпл. 2-цн онксяецл.
+
+	SOB	R3,11$		;  йнмеж тнпл. яецл.
+
+	ADD	#20,SP
+	JSR	R4,PWREG
+	RTS	PC
+
+PFSEGM:	TST	R4		;  тнплхпнбюмхе яецлемрю
+	BEQ	KFSEGM
+1$:	ADD	R0,R1
+	ADD	R5,R2
+	JSR	PC,MFTCK1
+	SOB	R4,1$
+KFSEGM:	RTS	PC
+
+
+
+
+
+; =============================
+; ***** лндскэ времхъ яяд *****
+; =============================
+
+
+;	бшунд:	R0 - якнбн янярнъмхъ дхяокеъ
+
+
+MCTSSD:	MOV	R1,-(SP)
+
+	CLR	R0		;  ондц. оюпюл.
+	MOV	#SYSPR,R1
+
+1$:	SEC			;  сярюмнбйю ткюфйнб
+2$:	ROR	R0
+	BCS	KCTSSD
+	TSTB	(R1)+
+	BNE	1$
+	BR	2$
+
+KCTSSD:	MOV	(SP)+,R1
+	RTS	PC
+
+
+
+
+;  ======================================
+;  **** ахакхнрейю ондопнцпюлл DTVMN ****
+;  ======================================
+
+
+
+;    -------------------------------
+;    ** 0.1. янупюмемхе пецхярпнб **
+;    -------------------------------
+
+
+PSREG0:	MOV	#220,@#ASPORT	;- яапня цр. ркц.
+
+PSREG:	MOV	R3,-(SP)
+	MOV	R2,-(SP)
+	MOV	R1,-(SP)
+	MOV	R0,-(SP)
+	MOV	R4,-(SP)
+
+	RTS	R4
+
+
+;    -----------------------------------
+;    ** 0.2. бняярюмнбкемхе пецхярпнб **
+;    -----------------------------------
+
+PWREG:	MOV	(SP)+,R0
+	MOV	(SP)+,R0
+	MOV	(SP)+,R1
+	MOV	(SP)+,R2
+	MOV	(SP)+,R3
+
+	RTS	R4
+
+
+;    ----------------
+;    ** 0.3. яапня **
+;    ----------------
+
+PSBR:	JSR	PC,PFINDT	;  сяр.хмд.рюа.
+
+	CLR	NOMSIM		;  тнпл. AS
+	JSR	PC,PFASIM
+
+	MOV	FON,R0		;  яапня VP
+	MOV	AS,R3
+	MOV	DGPB,R2
+	ASR	R2
+1$:	MOV	R0,(R3)+
+	TST	R3
+	BPL	2$
+	SUB	DVPB,R3
+2$:	SOB	R2,1$
+
+PSBR1:	CLR	R5		;  тнпл. AGT
+	JSR	PC,PFAGT1
+	CLR	SCTVS
+	MOVB	NMPGT,MASPGT
+
+	JSR	PC,PFK		;  тнпл. йспянпю
+
+	RTS	PC
+
+
+;    ----------------------------------------
+;    ** 0.4. тнплхпнбюмхе яксфеамни ярпнйх **
+;    ----------------------------------------
+
+PFSSTR:	JSR	PC,PFINDT	;  тнпл. хмд. рюа.
+
+	MOV	MCWSS,R1	;  тнплхп. вепрш
+	JSR	PC,PZTVSW
+
+	MOV	FONSS,R1	;  яапня хмдхйюрнпнб
+	MOV	#KTVSSS-4,R4
+1$:	JSR	PC,PZTVSW
+	SOB	R4,1$
+
+PUINDR:	CLR	R0		;  сярюмнбйю хмдхйюрнпнб
+	CLR	SCKOD
+	MOV	#6,R2
+2$:	MOV	R0,-(SP)
+	MOV	R2,-(SP)
+	JSR	PC,PFINDR
+	MOV	(SP)+,R2
+	MOV	(SP)+,R0
+	INC	R0
+	SOB	R2,2$
+
+	RTS	PC
+
+
+;    -----------------------------------------
+;    ** 0.5. тнплхпнбюмхе хмдхйюрнпю пефхлю **
+;    -----------------------------------------
+
+PFINDR:	INC	SCUIND		;  сяр. опхгм. тнпл. хмд.
+	TST	SCKOD
+	BNE	KFINDR
+	CLR	SCUIND
+
+	MOV	#PRRUS,R1	;  бунд:  R0 - мнлеп хмд.
+	ADD	R0,R1
+	ASL	R0
+	ADD	R0,PC
+	BR	1$
+	BR	2$
+	BR	3$
+	BR	4$
+	BR	5$
+	BR	6$
+
+1$:	MOV	#LAT,R3		;  пся/кюр
+	TSTB	(R1)
+	BEQ	7$
+	MOV	#RUS,R3
+	BR	7$
+
+2$:	TSTB	(R1)		;  ондв.
+	BEQ	8$
+	MOV	#PODC,R3
+	BR	7$
+
+3$:	TSTB	(R1)		;  хмб. я.
+	BEQ	8$
+	MOV	#INW,R3
+	BR	7$
+
+4$:	TSTB	(R1)		;  хмд. яс
+	BEQ	8$
+	MOV	#ISU,R3
+	BR	7$
+
+5$:	TSTB	(R1)		;  акнй. пед.
+	BEQ	8$
+	MOV	#BLR,R3
+	BR	7$
+
+6$:	TSTB	(R1)		;  цпют/гюо/ярхп
+	BEQ	8$
+	TSTB	PRZAP
+	BEQ	9$
+	MOV	#ZAP,R3
+	BR	7$
+9$:	MOV	#GRAF,R3
+	TSTB	PRSTIR
+	BEQ	7$
+	MOV	#STIR,R3
+	BR	7$
+
+8$:	MOV	#SBRIND,R3	;  яапня хмдхй.
+
+7$:	ASL	R0		;  ондц. оюпюл. хмд.
+	ADD	#4,R0
+	MOV	#100,R1
+	TSTB	PRCWSS
+	BEQ	10$
+	ASR	R1
+10$:	SUB	R0,R1
+	MOV	#4,R2
+
+	MOV	FON,-(SP)	;  янупюмемхе опхгмюйнб
+	MOV	MASCW,-(SP)
+	MOV	PRCW,-(SP)
+	MOV	PRPODC,-(SP)
+
+	MOV	FONSS,FON	;  сярюмнбйю опхгмюйнб яя
+	MOV	MCWSS,MASCW
+	MOVB	PRCWSS,PRCW
+	MOV	PRPSSS,PRPODC
+
+11$:	MOVB	(R3)+,R0	;  тнплхпнбюмхе хмдхйюрнпю
+	MOV	R3,-(SP)
+	JSR	PC,PFSSS
+	MOV	(SP)+,R3
+	INC	R1
+	SOB	R2,11$
+
+	MOV	(SP)+,PRPODC	;  бняяр. опхгмюйнб
+	MOV	(SP)+,PRCW
+	MOV	(SP)+,MASCW
+	MOV	(SP)+,FON
+
+KFINDR:	RTS	PC
+
+
+;    --------------------------------------------
+;    ** 0.6. тнплхпнбюмхе хмдхйюрнпю рюаскъжхх **
+;    --------------------------------------------
+
+PFINDT:	MOV	FONSS,R1	;  яапня хмдхйюрнпю
+	MOV	BAZVP,R3
+	ADD	ANVP,R3
+	MOV	#3,R4
+10$:	JSR	PC,PZTVSW
+	SOB	R4,10$
+
+	MOV	#20,R4		;  сяр. дкхмш якнбю
+	TSTB	PRCW
+	BEQ	1$
+	ASL	R4
+
+1$:	CLR	R5		;  онхяй онгхжхх рюаскъжхх
+7$:	CLR	R2
+	MOV	MTAB(R5),R0
+4$:	ROR	R0
+	BCS	2$
+	BEQ	3$
+6$:	INC	R2
+	BR	4$
+
+2$:	MOV	R2,R1		;  сярюмнбйю хмдхйюрнпю
+	TSTB	PRCW
+	BNE	5$
+	ADD	R3,R1
+	MOVB	MCWSS,(R1)
+	BR	6$
+5$:	ASL	R1
+	ADD	R3,R1
+	MOV	MCWSS,(R1)
+	BR	6$
+
+3$:	ADD	#2,R5		;  хглемемхе юдпеянб
+	ADD	R4,R3
+	BIT	#77,R3
+	BNE	7$
+	SUB	#100,R3
+
+	RTS	PC
+
+
+;    -------------------------------
+;    ** 0.7. тнплхпнбюмхе йспянпю **
+;    -------------------------------
+
+PFK:				;  тнплхп. х ярхп. йспянпю
+PSTK:	TSTB	PRGRAF
+	BNE	1$
+	JSR	PC,PFSK		;  яхлб. йспянп
+	MOV	#KPOWTS,BKPOWT
+	BR	KFK
+1$:	JSR	PC,PFGK		;  цпют. йспянп
+	MOV	#KPOWTG,BKPOWT
+
+KFK:	RTS	PC
+
+
+;    ---------------------------------------------
+;    ** 0.8. педюйрхпнбюмхе яхлбнкэмнцн йспянпю **
+;    ---------------------------------------------
+
+PREDSK:	JSR	PC,PSTSK
+	CLR	R5
+	JSR	PC,PFASIM
+	JSR	PC,PFSK
+
+	RTS	PC
+
+
+;    ------------------------
+;    ** 0.9. яапня яхлбнкю **
+;    ------------------------
+
+PSBRS:	MOV	FON,R0		;  ондц. оюпюл.
+	MOV	AS,R3
+	MOV	#12,R2
+
+3$:	TSTB	PRCW		;  гюохяэ тнмю
+	BNE	1$
+	MOVB	R0,(R3)
+	BR	2$
+1$:	MOV	R0,(R3)
+
+2$:	JSR	PC,PFTAN	;  хглемемхе юдп.
+	SOB	R2,3$
+
+	RTS	PC
+
+
+;    ---------------------------------------------
+;    ** 0.10. тнплхпнбюмхе рейсыецн юдпеяю бмхг **
+;    ---------------------------------------------
+
+PFTAN:	ADD	#DTVSTB,R3
+	BPL	KFTAN
+	SUB	DVPB,R3
+
+KFTAN:	RTS	PC
+
+
+;    --------------------------------------
+;    ** 0.11. гюонкмемхе TV-ярпнйх ббепу **
+;    --------------------------------------
+
+PZTVSW:	MOV	#DTVSTS,R2	;  R1 - тнм, R3 - юдпея
+	CMP	R3,ANVP
+	BHI	1$
+	ADD	DVPB,R3
+1$:	MOV	R1,-(R3)
+	SOB	R2,1$
+
+	RTS	PC
+
+
+;    -------------------------------------
+;    ** 0.12. гюонкмемхе TV-ярпнйх бмхг **
+;    -------------------------------------
+
+PZTVSN:	MOV	#DTVSTS,R2	;  R1 - тнм, R3 - юдпея
+	TST	R3
+	BPL	1$
+	SUB	DVPB,R3
+1$:	MOV	R1,(R3)+
+	SOB	R2,1$
+
+	RTS	PC
+
+
+;    -----------------------
+;    ** 0.13. ядбхц ббепу **
+;    -----------------------
+
+PSDWW:	MOV	R1,R3		;  ондцнрнбйю юдпеянб
+	SUB	#DSSTRB,R3
+	CMP	R3,ANVP
+	BHIS	1$
+	ADD	DVPB,R3
+
+1$:	TST	R2		;  онякедмъъ ярпнйю
+	BEQ	PSBRSN
+
+5$:	MOV	#DTVSTS,R4	;  ядбхц
+2$:	MOV	(R1)+,(R3)+
+	SOB	R4,2$
+	TST	R1
+	BPL	3$
+	SUB	DVPB,R1
+	BR	4$
+3$:	TST	R3
+	BPL	4$
+	SUB	DVPB,R3
+4$:	SOB	R2,5$
+
+PSBRSN:	MOV	#KTVSS,R4	;  яапня ярпнйх бмхг
+	MOV	FON,R1
+1$:	JSR	PC,PZTVSN
+	SOB	R4,1$
+
+	RTS	PC
+
+
+;    ----------------------
+;    ** 0.14. ядбхц бмхг **
+;    ----------------------
+
+PSDWN:	MOV	R1,R3		;  ондц. юдпеянб
+	ADD	#DSSTRB,R3
+	CMP	R1,ANVP
+	BHI	11$
+	ADD	DVPB,R1
+11$:	CMP	R3,#100000
+	BLOS	1$
+	SUB	DVPB,R3
+
+1$:	TST	R2		;  онякедмъъ ярпнйю
+	BEQ	PSBRSW
+
+5$:	MOV	#DTVSTS,R4	;  ядбхц
+2$:	MOV	-(R1),-(R3)
+	SOB	R4,2$
+	CMP	R1,ANVP
+	BHI	3$
+	ADD	DVPB,R1
+	BR	4$
+3$:	CMP	R3,ANVP
+	BHI	4$
+	ADD	DVPB,R3
+4$:	SOB	R2,5$
+
+PSBRSW:	MOV	#KTVSS,R4	;  яапня ярпнйх ббепу
+	MOV	FON,R1
+1$:	JSR	PC,PZTVSW
+	SOB	R4,1$
+
+	RTS	PC

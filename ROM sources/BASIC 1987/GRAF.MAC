@@ -1,0 +1,1890 @@
+;*******************************************************
+;*                                                     *
+;*      оюйер цпютхвеяйху опнцпюлл аеияхй-бхкэмчя      *
+;*   пюгпюанрюм янрпсдмхйюлх хох юм яяяп х бжйо бцс    *
+;*                                                     *
+;*******************************************************
+.SBTTL	$BSCGRP	BASIC GRAPHIC
+
+.IF EQ,<MASINA-BK0011>*<MASINA-BK0010>*<MASINA-DVK3>*<MASINA-VUMS>
+
+.IF EQ,MASINA-BK0010
+	$DRWX=176	;йннпдхмюрю X
+	$DRWY=200	;йннпдхмюрю Y
+	ANVP=202	;мювюкн бо
+	BAZVP=204	;аюгю бо
+	DVPB=206	;дкхмю бо
+	MASCW==214	;люяйю жберю
+	FON==212	; --//-- тнмю
+
+	SC=0
+.IFF
+	SC=-2
+.GLOBL	PARAM,CHAR0,CHAR,PAPER,$DRWX,$DRWY
+.GLOBL	$PSET,$LINE,$COLOR,MAXCOL,SETCRT
+
+.IFTF
+.GLOBL	STAND,SAND,IDIV,DAUG,ISV,NOSTOP,STOPEN
+.GLOBL	SAVJMP,TYPE,$SCRT,PI
+
+.IIF GT,MASINA-BK0010	.GLOBL	CLSCR
+
+.IF DF,SNG
+.GLOBL	RI,IR,SING,KOS,MLR,DVR
+.IFF
+.GLOBL	SI,DI,ID,$B95,$DMUL$,$B93,$DDIV$
+.ENDC
+
+.MACRO	PUSH	ARGS
+.IRP	ARG,<ARGS>
+	MOV	ARG,-(SP)
+.ENDR
+.ENDM
+
+.MACRO	POP	ARGS
+.IRP	ARG,<ARGS>
+	MOV	(SP)+,ARG
+.ENDR
+.ENDM
+
+.MACRO	.PSET
+.IF NE,MASINA-BK0010
+	CALL	$PSET
+.IFF
+	EMT	30
+.ENDC
+.ENDM	.PSET
+
+.MACRO	.LINE
+.IF NE,MASINA-BK0010
+	CALL	$LINE
+.IFF
+	EMT	32
+.ENDC
+.ENDM	.LINE
+
+.IFT
+GRINIT::MOV	#4,@#$SCRT	;SENAS DRAW
+;	MOV	#2000,@#$SCRT
+SETCRT::
+	RETURN
+SMODE::
+
+.IFTF
+COLERR:	TRAP	5
+
+.IFT
+COLF::	MOV	@#MASCW,R3
+	MOV	(SP)+,R0
+	BNE	1$
+	CMP	(R0)+,(R0)+
+1$:	CALL	TSTCOL
+	CALL	ISV
+	MOV	#235,R0
+	CALL	ISV
+
+COLRET::MOV	R3,@#MASCW
+	JMP	@(R4)+
+
+TSTCOL::CMP	R0,#4
+	BHI	COLERR
+	ADD	#220,R0
+	RETURN
+
+COLR::	MOV	@#MASCW,R3
+	MOV	(SP)+,R0
+	BEQ	1$
+	CALL	TSTCOL
+	CALL	ISV
+	JMP	@(R4)+
+1$:	MOV	@#FON,@#MASCW
+	JMP	@(R4)+
+
+.IFF
+TSTCOL::CMP	R3,#MAXCOL
+	BHI	COLERR
+	DEC	R3
+	BPL	1$
+	MOV	@#PAPER,R3
+1$:	RETURN
+
+RSP::
+	MOV	@#CHAR0,-(SP)
+	JMP	@(R4)+
+
+SPFORM::
+	MOV	@SP,R3
+	CALL	TSTCOL
+	MOV	R3,@SP
+	JMP	@(R4)+
+
+.IFTF
+RETCRT::CALL	SETCRT
+	JMP	@(R4)+
+
+.IF GT,MASINA-BK0010
+GRPCLS::CALL	CLSCR
+	JMP	@(R4)+
+.ENDC
+
+VIDSP::	MOV	@SP,-(SP)
+	JMP	@(R4)+
+
+CURCOR::MOV	@#$DRWX,-(SP)
+	MOV	@#$DRWY,-(SP)
+	JMP	@(R4)+
+
+STP::	ADD	@#$DRWX,2(SP)
+	ADD	@#$DRWY,@SP
+	JMP	@(R4)+
+
+LSTP::	ADD	6(SP),2(SP)
+	ADD	4(SP),@SP
+	JMP	@(R4)+
+
+.IFT
+SPFORM::MOV	@SP,R0
+	BEQ	1$
+
+;	CALL	TSTCOL
+
+	CMP	R0,#4
+	BHI	COLERR
+	ADD	#220,R0
+
+	MOV	R0,@SP
+	JMP	@(R4)+
+1$:	MOV	@#FON,@SP
+SPTOL:	BIC	#177774,@SP
+	SUB	#224,@SP
+	NEG	@SP
+	JMP	@(R4)+
+
+RSP::	MOV	@#MASCW,-(SP)
+	BR	SPTOL
+
+.IFTF
+.PAGE
+.SBTTL	SET/RESET	SPECIFIED COLOR POINT SETTING/ERASING
+
+;-----------------------------------------
+; опнжедспю сярюмнбйх х цюьемхъ рнвйх.
+; ярей мю бунде:
+; ай0010	ай0011
+; 2(SP)		4(SP)	X-йннпдхмюрю;
+; (SP)		2(SP)	Y;
+;		 (SP)	жбер.
+;-----------------------------------------
+.IFT
+RESET::	CLR	R0
+	BR	PNT
+
+SET::	MOV	#1,R0
+
+.IFF
+RESET::
+	MOV	@#PAPER,@#CHAR
+	TST	(SP)+
+	BR	PNT
+
+SET::	MOV	(SP)+,@#CHAR
+
+.IFTF
+PNT:	MOV	(SP)+,R2
+	MOV	(SP)+,R1
+	.PSET
+	JMP	@(R4)+
+.IFTF
+.PAGE
+.SBTTL	LSET	LINE'S SEGMENT DRAWING
+
+;-----------------------------------------
+; опнжедспю бшвепвхбюмхъ нрпегйю опълни
+; лефдс дбслъ рнвйюлх (X1,Y1)-(X2,Y2).
+; ярей мю бунде:
+; ай0010	ай0011
+;  6(SP)	10(SP)	X1;
+;  4(SP)	 6(SP)	Y1;
+;  2(SP)	 4(SP)	X2;
+;   (SP)	 2(SP)	Y2;
+;		  (SP)	жбер.
+;-----------------------------------------
+
+LSET::
+.IFT
+	MOV	#1,R0
+.IFF
+	MOV	(SP)+,@#CHAR
+.IFTF
+	MOV	6(SP),R1
+	MOV	4(SP),R2
+	.PSET
+	MOV	(SP)+,R2
+	MOV	(SP)+,R1
+	CMP	(SP)+,(SP)+
+	.LINE
+	.PSET
+	JMP	@(R4)+
+.PAGE
+.SBTTL	RECSET	RECTANGLE DRAWING
+
+;--------------------------------------------
+; опнжедспю нрпхянбйх опълнсцнкэмхйю ян
+; ярнпнмюлх ,оюпюккекэмшлх ярнпнмюл щйпюмю,
+; х дхюцнмюкэч мю рнвйюу (X1,Y1), (X2,Y2)
+; ярей мю бунде:
+; ай0010	ай0011
+;  6(SP)	10(SP)	X1;
+;  4(SP)	 6(SP)	Y1;
+;  2(SP)	 4(SP)	X2;
+;   (SP)	 2(SP)	Y2;
+;		  (SP)	жбер.
+;--------------------------------------------
+
+RECSET::
+.IFT
+	MOV	#1,R0
+.IFF
+	MOV	(SP)+,@#CHAR
+.IFTF
+	MOV	@SP,R2
+	MOV	2(SP),R1
+	.PSET
+	MOV	6(SP),R1
+	.LINE
+	.PSET
+	MOV	4(SP),R2
+	.LINE
+	MOV	2(SP),R1
+	.LINE
+	MOV	(SP)+,R2
+	.LINE
+	TST	(SP)+
+	CMP	(SP)+,(SP)+
+	JMP	@(R4)+
+;
+
+.PAGE
+.SBTTL	BOXSET FILLING RECTANGLE DRAWING
+
+;---------------------------------------------------------
+; опнжедспю бшвепвхбюмхъ гюйпюьеммнцн опълнсцнкэмхйю ян
+; ярнпнмюлх, оюпюккекэмшлх ярнпнмюл щйпюмю х дхюцнмюкэч
+; мю рнвйюу (X1,Y1), (X2,Y2).
+; ярей мю бунде:
+; ай0010	ай0011
+;  6(SP)	10(SP)	X1;
+;  4(SP)	 6(SP)	Y1;
+;  2(SP)	 4(SP)	X2;
+;   (SP)	 2(SP)	Y2;
+;		  (SP)	жбер.
+;---------------------------------------------------------
+
+BOXSET::
+.IFF
+	MOV	(SP)+,@#CHAR
+.IFTF
+	MOV	@SP,R2
+	MOV	4(SP),R1
+	MOV	R1,R0
+	CMP	R1,R2
+	BHIS	1$
+	MOV	R2,R0
+	MOV	R1,R2
+1$:	SUB	R2,R0
+	INC	R0
+2$:	MOV	2(SP),R1
+	.PSET
+	MOV	6(SP),R1
+	.LINE
+	INC	R2
+	SOB	R0,2$
+	MOV	(SP)+,R2
+	MOV	(SP)+,R1
+.IFT
+	INC	R0
+.ENDC
+	.PSET
+	CMP	(SP)+,(SP)+
+	JMP	@(R4)+
+
+.PAGE
+.SBTTL	POINT	GETTING OF POINT COLOR
+
+;---------------------------------------------------------
+; опнжедспю онксвемхъ жберю рнвйх, гюдюммни йннпдхмюрш.
+; ярей мю бунде:
+; 2(SP)		X-йннпдхмюрю;
+;  (SP)		Y;
+; ярей мю бшунде:
+;  (SP)		йнд жберю рнвйх.
+;----------------------------------------------------------
+
+POINT::
+	MOV	(SP)+,R2	; Y
+	MOV	(SP)+,R1	; X
+.IF EQ,MASINA-BK0010
+	MOV	#-1,R0
+	CMP	R1,#377
+	BHI	1$
+	CMP	R2,#239.
+	BHI	1$
+.IFTF
+	CALL	$COLOR
+.IFT
+	SUB	#220,R0
+1$:
+.IFTF
+	MOV	R0,-(SP)	; бнгбпюыюелши жбер рнвйх
+.IFF
+	BMI	1$
+	INC	@SP
+1$:
+.ENDC
+	JMP	@(R4)+
+
+.PAGE
+.SBTTL	$PAINT	REGION FILLING
+
+;------------------------------------------------
+; опнжедспю гюйпюяйх сйюгюммшл жбернл накюярх
+; я цпюмхжеи нопедекеммнцн жберю.
+; ярей мю бунде:
+;  6(SP)	X-йннпдхмюрю рнвйх;
+;  4(SP)	Y;
+;  2(SP)	йнд жберю нйпюяйх;
+;   (SP)	йнд жберю цпюмхжш;
+; пецхярпш R4,R5 янупюмъчряъ.
+;------------------------------------------------
+
+$PAINT::
+.IF NE,MASINA-BK0010
+.IFF
+	PUSH	<@#MASCW>
+.IFTF
+	PUSH	<R4,R5>
+	MOV	R4,SAVJMP
+	MOV	14+SC(SP),R1	; X-йннпдхмюрю
+	MOV	12+SC(SP),R2	; Y
+.IFT
+	MOV	10+SC(SP),R4	; жбер нйпюяйх
+	MOV	R4,@#CHAR
+.IFF
+	MOV	10+SC(SP),R0
+	CALL	ISV		; оепедюел дпюибепс
+	MOV	R0,R4
+.ENDC
+	MOV	6+SC(SP),R5	; жбер цпюмхжш
+	CALL	$BORDR		; рнвйю (X,Y) опхмюдкефхр цпюмхже ?
+	BCS	$END		; дю 
+				; опнхгбндхл мювюкэмне яйюмхпнбюмхе бопюбн х
+				; бкебн  нр рнвйх я жекэч нопедекемхъ цпюмхж
+	MOV	R1,R3		; янупюмъел X-йннпдхмюрс
+10$:
+	INC	R1
+	CALL	$BORDR
+	BCC	10$
+	MOV	R1,R0		; нрмшме щрн опюбюъ цпюмхжю
+	MOV	R3,R1		; бняярюмнбхкх X-йннпдхмюрс
+20$:
+	DEC	R1
+	CALL	$BORDR
+	BCC	20$
+				; нрмшме б R1 кебюъ цпюмхжю
+	CLR	R3		; мскебни ьюц он Y - опхгмюй нйнмвюмхъ
+				; гюонкмемхъ йнмрспю
+	PUSH	<R3>
+	DEC	R3
+	PUSH	<R0,R1,R2,R3>	; оюпюлерпш гюйпюяйх йнмрспю ямхгс нр рнвйх
+	NEG	R3		; ю онйю асдел гюйпюьхбюрэ ббепу
+	CALL	$LINHR		; мн бмювюке опнбедел опълсч вепег рнвйс
+$SCANN:				; нямнбмни жхйк он гюйпюяйе накюярх
+	CMP	SP,#440
+	BHI	1$
+	TRAP	7
+1$:	ADD	R3,R2		; мнбне гмювемхе Y
+	INC	R1		; мнбюъ кебюъ цпюмхжю
+	CALL	$BORDR		; сундхр бопюбн ?
+	BCS	30$		; дю
+	PUSH	<R1,R1>		; X
+10$:
+	DEC	R1
+	CALL	$BORDR
+	BCC	10$		; мнбюъ кебюъ цпюмхжю сундхр бкебн
+	SUB	R1,(SP)		; ярюпюъ кебюъ цпюмхжю анкэье мнбни 
+	CMP	#2,(SP)+	; мю 2 ?
+	BGE	20$		; мер
+	SUB	#6,SP		; пегепбхпсел б ярейе якнр б 4 якнбю
+	PUSH	<6(SP)>		; оепеохяшбюел X б 5-не якнбн
+	DEC	10(SP)		; гюохяшбюел оюпюлерпш опнундю нр мнбни
+	MOV	R1,6(SP)
+	MOV	R2,4(SP)
+	MOV	R3,2(SP)	; кебни цпюмхжш дн ярюпни ян ялемни
+	NEG	2(SP)		; мюопюбкемхъ он нях Y б ярей
+20$:
+	PUSH	<(SP)>
+	MOV	R1,2(SP)	; мнбюъ кебюъ цпюмхжю
+	POP	<R1>		; X
+	BR	40$
+30$:				; хяякедсел кебсч цпюмхжс, сьедьсч бопюбн
+	INC	R1
+	CMP	R1,R0		; йнмрсп гюлймскяъ ?
+	BGE	$ENDSC		; дю
+	CALL	$BORDR		; кебюъ аефхр дюкэье бопюбн ?
+	BCS	30$
+	PUSH	<R1>
+	DEC	(SP)		; мнбюъ кебюъ цпюмхжю
+40$:
+	INC	R1		; онькх й опюбни цпюмхже
+	CALL	$BORDR		; днярхцмсрю ?
+	BCC	40$		; мер
+	INC	R0		; ярюпюъ опюбюъ цпюмхжю + 1
+	CMP	R1,R0		; мнбюъ опюбюъ цпюмхжю опебшьюер
+				; ярюпсч анкэье вел мю 1 ?
+	BLE	50$		; мер
+        SUB	#6,SP		; пегепбхпсел б ярейе якнр дкхмни
+				; б 4 якнбю
+	PUSH	<6(SP)>		; оепеохяшбюел кебсч цпюмхжс
+	DEC	R0		; кебюъ цпюмхжю дкъ онякедсчыецн юмюкхгю
+	MOV	R1,10(SP)
+	MOV	R0,6(SP)
+	MOV	R2,4(SP)
+	MOV	R3,2(SP)
+	NEG	2(SP)		; лемъел гмюй ьюцю
+	BR	70$
+50$:
+	DEC	R0		; ярюпюъ опюбюъ цпюмхжю
+	DEC	R0		; ярюпюъ опюбюъ цпюмхжю - 1
+	CMP	R0,R1		; ярюпюъ опюбюъ цпюмхжю опебшьюер
+				; мнбсч анкэье вел мю 1
+	BLE	70$		; мер
+	SUB	#6,SP
+	PUSH	<6(SP)>
+	INC	R0		; опюбюъ цпюмхжю нярюкюяэ опефмеи,
+				; ю мнбюъ опюбюъ на'ъбкъеряъ кебни
+				; х юмюкхгхпсеряъ б дюкэмеиьел
+	MOV	R0,10(SP)
+	MOV	R1,6(SP)
+	MOV	R2,4(SP)
+	MOV	R3,2(SP)
+	SUB	2(SP),4(SP)	; нярюрнй ярпнйх днкфем ашрэ опнюмюкхгх-
+				; пнбюм опх рейсыел гмювемхх Y, ю
+				; б мювюке жхйкю асдер "днаюбкем" ьюц
+70$:
+	MOV	R1,R0		; оепеохяшбюел мнбсч опюбсч цпюмхжс
+				; мю ее леярн
+	POP	<R1>		; бняярюмюбкхбюел хг ярейю
+				; мнбсч кебсч
+	CALL	$LINHR
+	BR	$SCANN
+$ENDSC:				; йнмеж яйюмхпнбюмхъ гюлймсрни онднакюярх
+	POP	<R3>		; хлечряъ дпсцхе онднакюярх
+	BEQ	$END		; мер
+	POP	<R2,R1,R0>
+	BR	$SCANN
+$END:				; гюбепьемхе опнцпюллш
+	POP	<R5,R4>
+.IF NE,MASINA-BK0010
+.IFF
+	POP	<R3>
+.IFTF
+	CMP	(SP)+,(SP)+	; нвхыюел ярей нр сфе
+	POP	<R2,R1>		; мемсфмшу оюпюлерпнб
+.IFF
+	MOV	PC,R0
+.IFTF
+	.PSET
+	CLR	@#SAVJMP
+.IFF
+	JMP	COLRET
+.IFT
+	JMP	@(R4)+
+.ENDC
+;
+.PAGE
+.SBTTL	$LINHR
+
+;-------------------------------------------------
+; бмсрпеммъъ опнжедспю опнбндхр цнпхгнмрюкэмсч
+; опълсч лефдс цпюмхжюлх.
+; пецхярпш мю бунде:
+; R0	опюбюъ цпюмхжю;
+; R1	кебюъ цпюмхжю;
+; R2	Y.
+; бяе пецхярпш янупюмъчряъ.
+;-------------------------------------------------
+
+$LINHR:
+	PUSH	<R1,R0>
+	INC	R1
+	MOV	#1,R0
+	.PSET
+	MOV	@SP,R1
+	DEC	R1
+	.LINE
+	POP	<R0,R1>
+	RETURN
+
+.PAGE
+.SBTTL	$BORDR
+
+;---------------------------------------------------------
+; бмсрпеммъъ опнжедспю нопедекъер онкнфемхе рнвйх
+; нрмняхрекэмн цпюмхжш.
+; пецхярпш мю бунде:
+; R1	X-йннпдхмюрю рнвйх;
+; R2	Y;
+; R4	жбер нйпюяйх;
+; R5	жбер цпюмхжш.
+; бяе пецхярпш янупюмъчряъ.
+; йндш сякнбхи:
+; ахр C сярюмюбкхбюеряъ, еякх рнвйю опхмюдкефхр цпюмхже,
+; б опнрхбмнл яксвюе нвхыюеряъ.
+;----------------------------------------------------------
+
+$BORDR:
+.IF EQ,MASINA-BK0010
+	CMP	R1,#377		; X-йннпдхмюрю б дносярхлшу опедекюу
+	BHI	20$		; мер
+	CMP	R2,#239.	; Y-йннпдхмюрю б дносярхлшу опедекюу
+	BHI	20$		; мер
+.IFTF
+	PUSH	<R0>
+	CALL	$COLOR		; нопедекъел жбер рнвйх (X,Y)
+.IFF
+	BCS	10$
+.ENDC
+	CMP	R0,R5		; жбер рнвйх янбоюдюер я жбернл цпюмхжш
+	BEQ	10$		; дю
+	CMP	R0,R4		; жбер рнвйх янбоюдюер я жбернл нйпюяйх
+	BEQ	10$
+	POP	<R0>
+	CLC
+	RETURN
+10$:
+	POP	<R0>
+20$:
+	SEC
+	RETURN
+
+.PAGE
+.SBTTL	$COLOR
+
+;--------------------------------------------------------
+; бмсрпеммъъ опнжедспю нопедекъер жбер гюдюммни рнвйх.
+; пецхярпш мю бунде:
+; R1	X-йннпдхмюрю рнвйх;
+; R2	Y.
+; пецхярпш мю бшунде:
+; R0	жбер рнвйх.
+; гю хяйкчвемхел R0 пецхярпш янупюмъчряъ.
+;--------------------------------------------------------
+
+.IF EQ,MASINA-BK0010
+$COLOR:
+	PUSH	<R1,R2>		; янупюмъел пецхярпш
+	ASL	R2		; слмнфюел Y мю 100 ( OCTAL )
+	ASL	R2
+	ASL	R2
+	ASL	R2
+	ASL	R2
+	ASL	R2
+	MOV	R1,R0		; X
+	ASR	R0		; декемхе
+	ASR	R0		; мю 4
+	ADD	R2,R0		; нрмняхрекэмши юдпея аюирю я рнвйни б нгс
+	ADD	@#BAZVP,R0	; днаюбкъел юдпея оепбни цпютхвеяйни ярпнйх
+ 				; нрмняхрекэмн мювюкю нгс-щйпюмю
+	BIC	#140000,R0	; свхршбюел, врн нгс-щйпюмю - ябхрнй
+	ADD	@#ANVP,R0	; днаюбкъел юдпея мювюкю нгс-щйпюмю
+	MOVB	(R0),R2		; аюир янаярбеммни оепянмни
+	BIC	#177774,R1	; мнлеп рнвйх б аюире:	0,1,2,3
+	BEQ	20$
+10$:
+	ASR	R2
+	ASR	R2
+	SOB	R1,10$
+20$:
+	BIC	#177774,R2	; бшдекъел дбю пюгпъдю рнвйх
+	MOV	#224,R0
+	SUB	R2,R0
+	POP	<R2,R1>
+	RETURN
+.ENDC
+
+.PAGE
+
+;-------------------------------
+; яксфеамше ондопнцюлш дкъ $ARC
+;-------------------------------
+
+.IF EQ,MASINA-BK0011
+ANG1::
+ANG2::
+	MOV	R4,@#SAVJMP
+	MOV	#1$,R4
+	JMP	@(R4)+
+1$:
+.IF DF,SNG
+	.WORD	PI,C2,MLR,DVR,C32767,MLR,RI,2$
+.IFF
+	.WORD	PI,C2,$DMUL$,$DDIV$,C32767,$DMUL$,DI,2$
+.IFTF
+2$:	MOV	@#SAVJMP,R4
+	CLR	@#SAVJMP
+	JMP	@(R4)+
+
+ANG01::	CLR	-(SP)
+	JMP	@(R4)+
+ANG02::	MOV	#77777,-(SP)
+	JMP	@(R4)+
+
+ASP0::	CLR	-(SP)
+	CLR	-(SP)
+	JMP	@(R4)+
+
+ASPINT::MOV	R4,@#SAVJMP
+	MOV	#A1,R4
+	JMP	@(R4)+
+ASPSNG::
+.IFF
+	MOV	2(SP),-(SP)
+	MOV	2(SP),-(SP)
+ASPDBL::
+.IFTF
+	TST	@SP
+	BMI	DRKL
+	MOV	R4,@#SAVJMP
+	CMP	@SP,#40200	;1
+	BHIS	ASPX
+;ASPY
+	MOV	#1$,R4
+	JMP	@(R4)+
+1$:
+.IFT
+	.WORD	C32767,MLR,RI,2$
+.IFF
+	.WORD	C32767,$DMUL$,DI,2$
+.IFTF
+2$:	ASL	@SP
+	MOV	@SP,-(SP)
+	CLR	2(SP)
+	BR	A3
+
+ASPX:	MOV	#A2,R4
+	JMP	@(R4)+
+.IFT
+A1:	.WORD	IR
+A2:	.WORD	C1X,DVR,C32767,MLR,RI,1$
+.IFF
+A1:	.WORD	ID
+A2:	.WORD	C1X,$DDIV$,C32767,$DMUL$,DI,1$
+.IFTF
+1$:	ASL	@SP
+	CLR	-(SP)
+A3:	MOV	@#SAVJMP,R4
+	CLR	@#SAVJMP
+	JMP	@(R4)+
+C2:
+.IFF
+	CLR	-(SP)
+	CLR	-(SP)
+.IFTF
+	CLR	-(SP)
+	MOV	#40400,-(SP)
+	JMP	@(R4)+
+C32767:
+.IFF
+	CLR	-(SP)
+	CLR	-(SP)
+.IFTF
+	MOV	#177000,-(SP)
+	MOV	#43777,-(SP)
+	JMP	@(R4)+
+C1X:
+.IFT
+	MOV	2(SP),-(SP)
+	MOV	2(SP),-(SP)
+	CLR	6(SP)
+	MOV	#40200,4(SP)	;1
+.IFF
+	MOV	6(SP),-(SP)
+	MOV	6(SP),-(SP)
+	MOV	6(SP),-(SP)
+	MOV	6(SP),-(SP)
+	CLR	16(SP)
+	CLR	14(SP)
+	CLR	12(SP)
+	MOV	#40200,10(SP)	;1
+.ENDC
+	JMP	@(R4)+
+
+.IFF
+.IF DF,SNG
+ANG1::	MOV	12(SP),-(SP)
+	MOV	12(SP),-(SP)
+	MOV	12(SP),-(SP)
+	BR	ANG
+ANG2::	MOV	16(SP),-(SP)
+	MOV	16(SP),-(SP)
+	MOV	16(SP),-(SP)
+ANG:	MOV	R4,-(SP)
+	MOV	R4,SAVJMP
+	MOV	12(SP),-(SP)
+	MOV	12(SP),-(SP)
+	JSR	R4,STAND
+	.WORD	KOS, 2$,IR,MLR,RI,3$,4$
+	.WORD	SING,5$,IR,MLR,RI,3$,6$
+2$:	MOV	6(SP),-(SP)
+	JMP	@(R4)+
+3$:	ADD	10(SP),@SP
+	JMP	@(R4)+
+4$:	MOV	14(SP),-(SP)
+	MOV	14(SP),-(SP)
+	BGE	8$
+	NEG	4(SP)
+8$:	BIS	#100000,@SP
+	JMP	@(R4)+
+5$:	MOV	10(SP),-(SP)
+	JMP	@(R4)+
+6$:	MOV	(SP)+,12(SP)
+	MOV	(SP)+,12(SP)
+	MOV	(SP)+,R4
+	CLR	SAVJMP
+	ADD	#6,SP
+	JMP	@(R4)+
+.IFF
+ANG1::	MOV	16(SP),-(SP)
+	MOV	16(SP),-(SP)
+	MOV	16(SP),-(SP)
+	BR	ANG
+ANG2::	MOV	22(SP),-(SP)
+	MOV	22(SP),-(SP)
+	MOV	22(SP),-(SP)
+ANG:	MOV	R4,-(SP)
+	MOV	R4,SAVJMP
+	MOV	SP,R0
+	ADD	#20,R0
+	MOV	-(R0),-(SP)
+	MOV	-(R0),-(SP)
+	MOV	-(R0),-(SP)
+	MOV	-(R0),-(SP)
+	JSR	R4,STAND
+	.WORD	$B95,2$,ID,$DMUL$,DI,3$,4$
+	.WORD	$B93,5$,ID,$DMUL$,DI,3$,6$
+2$:	MOV	12(SP),-(SP)
+	JMP	@(R4)+
+3$:	ADD	10(SP),@SP
+	JMP	@(R4)+
+4$:	MOV	SP,R0
+	ADD	#22,R0
+	MOV	-(R0),-(SP)
+	MOV	-(R0),-(SP)
+	MOV	-(R0),-(SP)
+	MOV	-(R0),-(SP)
+	BGE	8$
+	NEG	10(SP)
+8$:	BIS	#100000,@SP
+	JMP	@(R4)+
+5$:	MOV	14(SP),-(SP)
+	JMP	@(R4)+
+6$:	MOV	(SP)+,16(SP)
+	MOV	(SP)+,16(SP)
+	MOV	(SP)+,R4
+	CMP	(SP)+,(SP)+
+	CMP	(SP)+,(SP)+
+	TST	(SP)+
+	CLR	SAVJMP
+	JMP	@(R4)+
+.IFTF
+ANG01::	MOV	2(SP),-(SP)
+	ADD	10(SP),@SP
+	MOV	6(SP),-(SP)
+	JMP	@(R4)+
+ANG02::	MOV	6(SP),-(SP)
+	ADD	14(SP),@SP
+	MOV	12(SP),-(SP)
+	JMP	@(R4)+
+
+ASPINT::MOV	#1,-(SP)
+	JMP	@(R4)+
+.IFF
+ASPDBL::MOV	(SP)+,@SP
+	MOV	(SP)+,@SP
+.ENDC
+ASPSNG::MOV	#1,R2
+	MOV	(SP)+,R1
+	BLE	7$
+	CLR	R0
+	BISB	R1,R0
+	BIS	#200,R0
+	ASL	R1
+	CLRB	R1
+	SWAB	R1
+	SUB	#211,R1
+	BGE	55$
+	CMP	R1,#-20
+	BLT	6$
+1$:	INC	R1
+	BEQ	3$
+	ASR	R0
+	BCC	1$
+	ROL	R0
+2$:	ASLB	R2
+	BCS	4$
+	INC	R1
+	BNE	2$
+3$:	MOV	R0,@SP
+	MOV	R2,-(SP)
+	JMP	@(R4)+
+4$:	RORB	R2
+	ASL	R2
+5$:	INC	R1
+	BEQ	3$
+	ASR	R0
+	ADC	R0
+	BR	5$
+55$:	MOV	#400,R0
+	BR	3$
+6$:	MOV	R2,R0
+	MOV	#400,R2
+	BR	3$
+7$:	TRAP	5
+ASP0::	MOV	#1,-(SP)
+	MOV	#1,-(SP)
+	JMP	@(R4)+
+.ENDC
+
+;-------------------------------
+; яксфеамше ондопнпюлш дкъ DRAW
+;-------------------------------
+
+$CONST:	MOV	R4,-(SP)
+	MOV	R5,-(SP)
+	TRAP	110
+	BR	DRKL
+	MOV	4(SP),R4
+	MOV	R5,4(SP)
+	MOV	(SP)+,R5
+	RTS	R4
+DRKL:	TRAP	5
+;
+$VALUE: MOV	R4,-(SP)
+	MOV	R5,-(SP)
+	CLR	-(SP)
+	TRAP	105
+	BR	9$
+	BR	9$
+	BR	9$
+	TRAP	104
+	TST	R4
+	BEQ	9$
+	MOV	(R4)+,@SP
+.IF DF,SNG
+	TST	TYPE
+	BNE	9$
+.IFF
+	TSTB	TYPE
+	BMI	9$
+.IFTF
+	MOV	R1,R5
+	MOV	@R4,@SP
+	MOV	-(R4),-(SP)
+	JSR	R4,STAND
+.IFT
+	.WORD	RI,1$
+.IFF
+	.WORD	SI,1$
+.ENDC
+1$:	MOV	R5,R1
+9$:	MOV	6(SP),R4
+	MOV	(SP)+,4(SP)
+	MOV	(SP)+,R5
+	RTS	R4
+;
+$STRNG:	CLR	-(SP)
+	MOV	R4,-(SP)
+	MOV	R5,-(SP)
+	TRAP	105
+	BR	DRKL
+	BR	DRKL
+	BR	1$
+	BR	DRKL
+1$:	TRAP	104
+	TST	R4
+	BEQ	5$
+	MOV	6(SP),R5
+	MOV	(R4)+,4(SP)
+	MOV	@R4,6(SP)
+	MOV	R5,R4
+4$:	MOV	(SP)+,R5
+	RTS	R4
+5$:	MOV	6(SP),R4
+	CLR	6(SP)
+	BR	4$
+
+.PAGE
+.SBTTL	$ARC	ARC DRAWING
+
+;-----------------------------------------------------------------
+; опнжедспю онярпнемхъ дсцх нйпсфмнярх ( ояебднщкхояю ).
+; ярей мю бунде:
+;
+; ай0010	ай0011
+; дбй-3
+;
+; 22(SP)	16(SP)	X-йннпдхмюрю жемрпю нйпсфмнярх;
+; 20(SP)	14(SP)	Y;
+; 16(SP)	12(SP)	пюдхся;
+; 14(SP)	10(SP)	жбер нрпхянбйх;
+; 12(SP)		X-йннпдхмюрю мювюкэмни рнвйх;
+; 10(SP)		Y;
+;  6(SP)		X-йннпдхмюрю йнмевмни рнвйх;
+;  4(SP)		Y;
+;		 6(SP)	мювюкэмши сцнк ([0..77777]);
+;		 4(SP)	йнмевмши;
+;  2(SP)		вхякхрекэ яннрмньемхъ йннпдхмюр;
+;   (SP)		гмюлемюрекэ;
+;		 2(SP)	йнщттхжхемр яфюрхъ он нях X ([1..200000]);
+;		  (SP)	Y;
+;
+; еякх X-йннпдхмюрш цпюмхвмшу рнвей (сцкш дкъ ай0011)
+; нрпхжюрекэмше, рн опнбндъряъ опълше, янедхмъчыхе щрх рнвйх
+; я жемрпнл нйпсфмнярх.
+;------------------------------------------------------------------
+.IF EQ,MASINA-BK0011
+$ARC::
+ 	MOV	#PARAM+20,R0
+	MOV	(SP)+,-(R0)
+	MOV	(SP)+,-(R0)
+	MOV	(SP)+,-(R0)
+	MOV	(SP)+,-(R0)
+	MOV	(SP)+,-10(R0)
+	MOV	(SP)+,-(R0)
+	MOV	(SP)+,-(R0)
+	MOV	(SP)+,-(R0)
+	TST	-(R0)
+	EMT	130
+	JMP	@(R4)+
+.IFF
+$ARC::
+.IF NE,MASINA-BK0010
+.IFF
+	PUSH	<@#MASCW>
+.IFTF
+	PUSH	<R4,R5>
+	MOV	R4,SAVJMP
+.IFT
+	MOV	22+SC(SP),@#CHAR	; йнд жберю
+.IFF
+	MOV	22+SC(SP),R0
+	BEQ	10$
+	CALL	ISV       		; сярюмюбкхбюел жбер нрпхянбйх
+10$:
+.ENDC
+	MOV	20+SC(SP),R1		; XS < 0 ?
+	BGE	12$			; мер
+	NEG	R1
+	NEG	20+SC(SP)		; XS = -XS
+	MOV	16+SC(SP),R2		; YS
+	CMP	10+SC(SP),6+SC(SP)	; еярэ яфюрхе он ндмни хг няеи ?
+	BEQ	106$			; мер
+	BLT	103$			; дю, он нях Y
+	SUB	30+SC(SP),R1
+	PUSH	<R2,R1,12+SC(SP)>	; яфюрхе он нях X
+	JSR	R4,STAND
+	.WORD	SAND	
+	.WORD	101$
+	.WORD	IDIV
+	.WORD	102$
+101$:
+	PUSH	<14+SC(SP)>
+	JMP	@(R4)+
+102$:
+	POP	<R1,R2>
+	ADD	30+SC(SP),R1
+	BR	106$
+103$:
+	SUB	26+SC(SP),R2		; яфюрхе он нях X
+	PUSH	<R1,R2,14+SC(SP)>
+	JSR	R4,STAND
+	.WORD	SAND
+	.WORD	104$
+	.WORD	IDIV
+	.WORD	105$
+104$:
+	PUSH	<12+SC(SP)>
+	JMP	@(R4)+
+105$:
+	POP	<R2,R1>
+	ADD	26+SC(SP),R2
+106$:
+	MOV	#1,R0
+	.PSET
+	MOV	30+SC(SP),R1		; XC
+	MOV	26+SC(SP),R2		; YC
+	.LINE				; вепрхл нрпегнй (XS,YS)-(XC,YC)
+12$:
+	MOV	14+SC(SP),R1		; XT < 0 ?
+	BGE	14$			; мер
+	NEG	R1
+	NEG	14+SC(SP)		; XT = -XT
+	MOV	12+SC(SP),R2		; YT
+	CMP	10+SC(SP),6+SC(SP)
+	BEQ	126$
+	BLT	123$
+	SUB	30+SC(SP),R1
+	PUSH	<R2,R1,12+SC(SP)>
+	JSR	R4,STAND
+	.WORD	SAND
+	.WORD	121$
+	.WORD	IDIV
+	.WORD	122$
+121$:
+	PUSH	<14+SC(SP)>
+	JMP	@(R4)+
+122$:
+	POP	<R1,R2>
+	ADD	30+SC(SP),R1
+	BR	126$
+123$:
+	SUB	26+SC(SP),R2
+	PUSH	<R1,R2,14+SC(SP)>
+	JSR	R4,STAND
+	.WORD	SAND
+	.WORD	124$
+	.WORD	IDIV
+	.WORD	125$
+124$:
+	PUSH	<12+SC(SP)>
+	JMP	@(R4)+
+125$:
+	POP	<R2,R1>
+	ADD	26+SC(SP),R2
+126$:
+	MOV	#1,R0
+	.PSET
+	MOV	30+SC(SP),R1		; XC
+	MOV	26+SC(SP),R2		; YC
+	.LINE				; вепрхл нрпегнй (XT,YT)-(XC,YC)
+14$:
+	CLR	R1			; 0 - мювюкэмне гмювемхе X-йннпдхмюрш
+					; б оепбнл йбюдпюмре
+	MOV	24+SC(SP),R2		; R - мювюкэмне гмювемхе Y-йннпдхмюрш
+					; б оепбнл йбюдпюмре
+	MOV	R2,R3			; дюкее бшвхякъел D[0]
+	DEC	R3
+	NEG	R3
+	ASL	R3			; D[0]
+	CMP	20+SC(SP),14+SC(SP)	; X-йннпдхмюрш мювюкэмни х йнмевмни
+					; рнвей дсцх янбоюдючр ?
+	BNE	20$			; мер
+	CMP	16+SC(SP),12+SC(SP)	; мювюкэмюъ х йнмевмюъ рнвйх
+					; янбоюдючр ?
+	BNE	20$			; мер
+	MOV	#125252,R5		; гюдюел нрпхянбйс бяеи нйпсфмнярх
+	JMP	$ASET
+20$:
+	SUB	30+SC(SP),20+SC(SP)	; оепеундхл б яхярелс йннпдхмюр
+	SUB	26+SC(SP),16+SC(SP)	; я мювюкнл б жемрпе нйпсфмнярх
+	SUB	30+SC(SP),14+SC(SP)
+	SUB	26+SC(SP),12+SC(SP)
+	CLR	R0			; R0 - мнлеп йбюдпюмрю я ( XS, YS )
+	TST	20+SC(SP)
+	BGE	30$
+	INC	R0
+	INC	R0
+	TST	16+SC(SP)
+	BLT	40$
+	BR	35$
+
+30$:
+	TST	16+SC(SP)
+	BGE	40$
+35$:
+	INC	R0
+40$:
+	CLR	R4			; R4 - мнлеп йбюдпюмрю я ( XT, YT )
+	TST	14+SC(SP)
+	BGE	50$
+	INC	R4
+	INC	R4
+	TST	12+SC(SP)
+	BLT	60$
+	BR	55$
+50$:
+	TST	12+SC(SP)
+	BGE	60$
+55$:
+	INC	R4
+60$:					; "оепемняхл" мювюкэмсч х йнмевмсч
+	ASL	R0			; рнвйх б 1-ши йбюдпюмр
+	JMP	@$QS(R0)
+$QS1:
+	PUSH	<20+SC(SP)>
+	MOV	20+SC(SP),22+SC(SP)	; X=-Y
+	NEG	22+SC(SP)
+	POP	<16+SC(SP)>		; Y=X
+	BR	$QS0
+$QS2:
+	NEG	20+SC(SP)		; X=-X
+	NEG	16+SC(SP)		; Y=-Y
+	BR	$QS0
+$QS3:
+	PUSH	<20+SC(SP)>
+	MOV	20+SC(SP),22+SC(SP)	; X=Y
+	POP	<16+SC(SP)>		; Y=-X
+	NEG	16+SC(SP)
+	BR	$QS0
+$QS0:
+	ASR	R0
+	ASL	R4
+	JMP	@$QT(R4)
+$QT1:
+	PUSH	<14+SC(SP)>
+	MOV	14+SC(SP),16+SC(SP)
+	NEG	16+SC(SP)
+	POP	<12+SC(SP)>
+	BR	$QT0
+$QT2:
+	NEG	14+SC(SP)
+	NEG	12+SC(SP)
+	BR	$QT0
+$QT3:
+	PUSH	<14+SC(SP)>
+	MOV	14+SC(SP),16+SC(SP)
+	POP	<12+SC(SP)>
+	NEG	12+SC(SP)
+$QT0:
+	ASR	R4
+	CLR	R5
+	CMP	R0,R4			; мювюкэмюъ х йнмевмюъ рнвйх
+					; б ндмнл йбюдпюмре
+	BEQ	40$			; дю
+	PUSH	<#6>
+	CALL	$SETCD
+10$:
+	INC	R0
+	CMP	#4,R0
+	BNE	20$
+	CLR	R0
+20$:
+	CMP	R0,R4
+	BEQ	30$
+	PUSH	<#12>
+	CALL	$SETCD
+	BR	10$
+30$:
+	PUSH	<#2>
+	CALL	$SETCD
+	BR	$ASET
+40$:
+	CMP	20+SC(SP),14+SC(SP)		; XS-XT>0 ?
+	BGT	50$
+	PUSH	<#10>
+	CALL	$SETCD
+	BR	$ASET
+50$:
+	MOV	#125252,R5
+	PUSH	<#4>
+	CALL	$SETCD
+$ASET:
+	CALL	$P4SET
+	TST	R5			; онярпнемю бяъ дсцю ?
+	BEQ	$AEND			; дю
+	MOV	R3,R0			; D[I]
+	BGT	20$
+;------ D[I] <= 0
+	ADD	R2,R0			; бшвхякъел L[I]
+	ASL	R0
+	DEC	R0
+	BGT	10$
+;...... D[I] <= 0 AND L[I] <= 0   ===> M1
+	INC	R1			; X[I+1]=X[I]+1
+	MOV	R1,R0
+	ASL	R0
+	ADD	R0,R3
+	INC	R3			; D[I+1]=D[I]+2*X[I+1]+1
+	BR	$ASET
+;...... D[I] <= 0 AND L[I] > 0 OR D[I] >= 0 AND L'[I] <= 0 ====> M2
+10$:
+	INC	R1			; X[I+1]=X[I]+1
+	DEC	R2			; Y[I+1]=Y[I]-1
+	MOV	R1,R0
+	SUB	R2,R0
+	INC	R0
+	ASL	R0
+	ADD	R0,R3			; D[I+1]=D[I]+2*X[I+1]-2*Y[I+1]+2
+	BR	$ASET
+;------ D[I] > 0
+20$:
+	SUB	R1,R0			; бшвхякъел L'[I]
+	ASL	R0
+	DEC	R0
+	BLE	10$
+;...... D[I] > 0 AND L'[I] > 0
+	DEC	R2			; Y[I+1]=Y[I]-1
+	MOV	R2,R0
+	ASL	R0
+	SUB	R0,R3
+	INC	R3
+	BR	$ASET
+$AEND:
+	POP	<R5,R4>
+.IF NE,MASINA-BK0010
+.IFF
+	POP	<R3>
+.IFTF
+	ADD	#20,SP
+	POP	<R2,R1>
+	CALL	$COLOR
+.IFT
+	MOV	R0,@#CHAR
+.IFF
+	CALL	ISV
+.IFTF
+	.PSET
+	CLR	@#SAVJMP
+.IFT
+	JMP	@(R4)+
+.IFF
+	JMP	COLRET
+.ENDC
+$QS:
+	.WORD	$QS0
+	.WORD	$QS1
+	.WORD	$QS2
+	.WORD	$QS3
+$QT:
+	.WORD	$QT0
+	.WORD	$QT1
+	.WORD	$QT2
+	.WORD	$QT3
+
+.PAGE
+.SBTTL	$SETCD	QUADRANT CODE SETTING
+
+;----------------------------------------------------
+; бмсрпеммъъ опнжедспю нопедекемхъ йндю йбюдпюмрю.
+; ярей мю бунде:
+; 2(SP)		сярюмюбкхбюелши йнд;
+;  (SP)		юдпея бнгбпюрю.
+;----------------------------------------------------
+ 
+$SETCD:
+	PUSH	<R0,R1,R2>
+	MOV	10(SP),R1		; сярюмюбкхбюелши йнд
+	MOV	#17,R2			; люяйю
+	TST	R0
+	BEQ	20$
+10$:
+	ASL	R1
+	ASL	R1
+	ASL	R1
+	ASL	R1
+	ASL	R2
+	ASL	R2
+	ASL	R2
+	ASL	R2
+	SOB	R0,10$
+20$:
+	BIC	R2,R5
+	BIS	R1,R5
+	POP	<R2,R1,R0,(SP)>
+	RETURN
+
+.PAGE
+.SBTTL	$P4SET	SYMMETRICAL POINTS CHECKING AND DRAWING
+
+;---------------------------------------------------------------
+; бмсрпеммъъ опнжедспю опнбепйх дносярхлнярх х нрпхянбйх 4-у
+; яхллерпхвмшу рнвей.
+; бундмше оюпюлерпш:
+; R1	нрмняхрекэмюъ X-йннпдхмюрю рнвйх ( б 1-нл йбюдпюмре );
+; R2	Y;
+; R5	йнд йбюдпюмрю.
+; бшундмше оюпюлерпш:
+; R5	йнд йбюдпюмрю.
+; ме янупюмъеряъ R0.
+; бмхлюмхе!!! яхъ опнжедспю мюцкн хяонкэгсер гмюмхе ярейю,
+; онщрнлс кчаше хяопюбкемхъ б бшгшбючыеи опнжедспе $ARC,
+; гюрпюцхбючыхе яхей, опхбедср й менаундхлнярх ее йнппейжхх.
+;---------------------------------------------------------------
+
+$P4SET:
+	PUSH	<R5,R5>
+	CLR	R0			; мнлеп йбюдпюмрю ( 0,1,2,3 )
+$P4CYC:
+	BIC	#177760,R5		; бшдекъел йнд нвепедмнцн йбюдпюмрю
+	JMP	@$CODE(R5)		; напюаюршбюел рнвйс б бшдекеммнл
+					; йбюдпюмре янцкюямн ее йндс
+
+$C0000:					; дсцю б йбюдпюмре ме бшвепвхбюеряъ
+	INC	R0
+	CMP	#4,R0			; напюанрюмш бяе йбюдпюмрш ?
+	BNE	10$
+	JMP	$P4END			; дю
+10$:
+	POP	<R5>
+	ASR	R5
+	ASR	R5
+	ASR	R5
+	ASR	R5
+	PUSH	<R5>
+	BR	$P4CYC
+$C0010:					; дсцю бшвепвхбюеряъ нр мювюкю
+					; йбюдпюмрю дн йнмевмни рнвйх
+	CMP	R1,22+SC(SP)		; днярхцмсрю йнмевмюъ рнвйю ?
+	BLT	$L2			; мер
+	CMP	R2,20+SC(SP)
+	BGT	$L2
+	CLR	R5			; сярюмюбкхбюел, врн б нярюбьеияъ
+					; вюярх йбюдпюмрю дсцю ме бшвепвх-
+					; бюеряъ
+$L0:					; дюкее якедсер сярюмнбйю йндю
+					; бшвепвхбюелнярх дсцх б дюммнл
+					; йбюдпюмре
+	MOV	#17,R4			; люяйю
+	PUSH	<R0>			; янупюмъел мнлеп йбюдпюмрю
+	BEQ	$L1
+10$:
+	ASL	R5
+	ASL	R5
+	ASL	R5
+	ASL	R5
+	ASL	R4
+	ASL	R4
+	ASL	R4
+	ASL	R4
+	SOB	R0,10$
+$L1:
+	POP	<R0>			; бняярюмюбкхбюел мнлеп йбюдпюмрю
+	BIC	R4,2(SP)		; цюяхл опедшдсыхи йнд
+	BIS	R5,2(SP)		; сярюмюбкхбюел мнбши
+$L2:					; нрпхянбйю рнвйх
+	PUSH	<R0,R1,R2>
+	ASL	R0
+	JMP	@$QUA(R0)
+$Q0:
+	PUSH	<R3,R4,R5>		; STAND, SAND IDIV онпрър пецхярпш
+	CMP	32+SC(SP),30+SC(SP)
+	BEQ	$L8
+	BLT	$L5
+	PUSH	<R2,R1,34+SC(SP)>
+	JSR	R4,STAND
+	.WORD	SAND
+	.WORD	$L3
+	.WORD	IDIV
+	.WORD	$L4
+$L3:
+	PUSH	<36+SC(SP)>
+	JMP	@(R4)+
+$L4:
+	POP	<R1,R2>			; опенапюгнбюммюъ X-йннпдхмюрю
+	BR	$L8
+$L5:
+	PUSH	<R1,R2,36+SC(SP)>
+	JSR	R4,STAND
+	.WORD	SAND
+	.WORD	$L6
+	.WORD	IDIV
+	.WORD	$L7
+$L6:
+	PUSH	<34+SC(SP)>
+	JMP	@(R4)+
+$L7:
+	POP	<R2,R1>			; опенапюгнбюммюъ Y-йннпдхмюрю
+$L8:
+	POP	<R5,R4,R3>
+	MOV	#1,R0			; сярюмюбкхбюел нрпхянбйс
+	ADD	44+SC(SP),R1
+	ADD	42+SC(SP),R2
+	.PSET				; бшбндхл рнвйс
+	POP	<R2,R1,R0>
+	BR	$C0000
+$Q1:
+	MOV	R2,R1			; X=Y
+	MOV	2(SP),R2		; Y=-X
+	NEG	R2
+	BR	$Q0
+$Q2:
+	NEG	R1			; X=-X
+	NEG	R2			; Y=-Y
+	BR	$Q0
+$Q3:
+	MOV	R2,R1			; X=-Y
+	NEG	R1
+	MOV	2(SP),R2		; Y=X
+	BR	$Q0
+$C0100:					; дсцю бшвепвхбюеряъ нр мювюкю
+					; йбюдпюмрю дн йнмевмни рнвйх х
+					; нр мювюкэмни рнвйх дн йнмжю
+					; йбюдпюмрю
+	CMP	R1,22+SC(SP)		; йнмевмюъ рнвйю днярхцмсрю ?
+	BLT	$L2			; мер
+	CMP	R2,20+SC(SP)
+	BGT	$L2
+	MOV	#6,R5			; сярюмюбкхбюел опхгмюй нрпхянбйх
+					; нр мювюкэмни рнвйх дн йнмжю
+					; йбюдпюмрю
+	BR	$L0
+$C0110:					; дсцю бшвепвхбюеряъ нр мювюкэмни
+					; рнвйх дн йнмжю йбюдпюмрю
+	CMP	R1,26+SC(SP)		; мювюкэмюъ рнвйю днярхцмсрю ?
+	BLT	$C0000			; мер
+	CMP	R2,24+SC(SP)
+	BGT	$C0000
+	MOV	#12,R5			; сярюмюбкхбюел опхгмюй нрпхянбйх
+					; бяецн ( нярюбьецняъ) йбюдпюмрю
+	BR	$L0
+$C1000:					; дсцю бшвепвхбюеряъ б опедекюу
+					; ндмнцн йбюдпюмрю нр мювюкэмни
+					; дн йнмевмни рнвйх
+	CMP	R1,26+SC(SP)		; мювюкэмюъ рнвйю днярхцмсрю ?
+	BGE	5$
+	JMP	$C0000			; мер
+5$:
+	CMP	R2,24+SC(SP)
+	BLE	10$
+	JMP	$C0000
+10$:
+	MOV	#2,R5			; сярюмюбкхбюел опхгмюй нрпхянбйх
+					; нр мювюкю йбюдпюмрю дн йнмевмни
+					; рнвйх
+$L01:	BR	$L0
+$C1010:					; дсцю вепрхряъ бн бяел йбюдпюмре
+	CMP	R1,32+SC(SP)		; днярхцмср йнмеж йбюдпюмрю ?
+	BLT	$L2			; мер
+	TST	R2
+	BGT	$L2
+	CLR	R5
+	BR	$L01
+$P4END:
+	POP	<R5,R5>
+	RETURN
+$CODE:
+	.WORD	$C0000
+	.WORD	$C0010
+	.WORD	$C0100
+	.WORD	$C0110
+	.WORD	$C1000
+	.WORD	$C1010
+$QUA:
+	.WORD	$Q0
+	.WORD	$Q1
+	.WORD	$Q2
+	.WORD	$Q3
+.ENDC
+;************************************************
+;		опнцпюлю  ноепюрнпю DRAW
+;	мю бунде:	б ярейе 2(SP) -юдпея ярпнйх
+;				 (SP) -дкхмю ярпнйх
+;	мю бшунде:	ярей осяр
+;	бяе пецхярпш янупюмчряъ.
+;	опх бшгнбюу $CONST,$VALUE,$STRNG R4 януп.
+;************************************************
+;
+$DRAW::
+	MOV	R4,SAVJMP
+	MOV	R5,R0		; янупюмхрэ
+	POP	<R5,R3>		; хгбкевэ дкхмс, юдп.ярп.
+	PUSH	<R0>		; януп. R5
+.IF EQ,<MASINA-BK0010>
+	PUSH	<@#MASCW>	; януп. жбер
+.IFF
+	MOV	@#CHAR0,@#CHAR
+.ENDC
+	MOV	$DRWX,R1	; мювюкэмне онкнфемхе
+	MOV	$DRWY,R2	; мювюкэмне онкнфемхе
+	CLR	-(SP)		; гюохяэ якнб( 0,0 -опхгмюй нйнмвюмхъ ),
+	CLR	-(SP)
+	MOV	#70000,-(SP)	; х якнбю оепелеыемхи  ( WM )( 70000 )
+NEWSTR:
+	TST	R3		; мскебни юдпея-опхгмюй йнмжю ?
+	BEQ	OUT		; дю--бшунд хг  $DRAW
+	ADD	R3,R5		; йнппейжхъ R5<--юдпея онякедм. аюирю ярпнйх
+	DEC	R5
+AGAIN:
+;----------------------------------------------------------------------
+;  SKANER нопедекъер опхмюдкефмнярэ яхлбнкю (R3) й йкчвюл.дкъ йкчвебнцн
+;	  B R0 ялеыемхе ецн б  ярпнйе KEY слмнфеммне мю 2
+;	!!!!! R3 мю бшунде сйюгшбюер мю якедсчыхи  яхлбOк  !!!!!!
+;----------------------------------------------------------------------
+;SKANER
+	TRAP	112
+	CMP	R3,R5		; йнмеж напюанрйх ондярпнйх?
+	BHI	NEXT		; дю
+	CLR	R0		; оепбнмювюкэмн  мскебне ялеыемхе
+1$:	CMPB	KEY(R0),(R3)	; яхлбнкш яундъряъ
+	BEQ	2$		; дю-мю бшунд
+	INC	R0		; мер--якедсчыхи
+	TSTB	KEY(R0)		; мскебни ? дю-мю бшунд
+	BNE	1$		; мер--ноърэ япюбмемхе
+	BR	ERROR		; ме йкчв
+2$:	ASL	R0		;  * 2
+	INC	R3		; опндбхфемхе R3
+;----------------------------------------------------------
+;	SELEKTOR нясыеярбкъер бербкемхе он напюанрйе йкчвеи
+;----------------------------------------------------------
+;SELEKTOR
+	CMP	R0,#16		; оепелеыемхе  RLDUEFGH
+	BLT	3$		; мер
+	JMP	RDEG$		; дю--мю RDEG$
+3$:	JMP	@CASE(R0)	; мер---бербкемхE
+;
+KEY:
+	.ASCIZ	/MNBCSAXRULDRULEHGFEHG/		; йкчвх
+	.EVEN
+CASE:
+	.WORD	M$,N$,B$,C$,S$,A$,X$		;лерйх оепеXндю SELEKTOR
+;
+NEXT:				; напюанрйю якед. ондярпнйх
+	POP	<R0,R5,R3>	; времхе WM,юдп.х дк. ярпнйх
+	PUSH	R0		; гюохяэ WM
+	BR	NEWSTR
+;------------------------------
+;	X$---напюанрйю ондярпнй
+;------------------------------
+X$:
+	POP	R0		; янупюмхрэ WM
+	CMP	-(SP),-(SP)	; гюпегепбхпнбюрэ 2 якнбю
+	CALL	BLNC		; опносяй опнаекнб
+	CALL	$STRNG		; онксвемхе б ярейе юдпеяю мнбни ондярпнйх
+				;   х ее дкхмш. R3 юбрнлюрхвеяйх опндбхмср
+	CALL	BLNC		; опносяй опнаекнб
+	BNE	ERROR		; нцпюмхвхрекэ-";" ? мер-ньхайю
+	INC	R3		; опносяй ";"
+	SUB	R3,R5		; йнппейжхъ R5<--дкхмю ярпнйх
+	INC	R5
+	MOV	R3,6(SP)	; гюохяэ б нрйкюдшбюелшу
+	MOV	R5,4(SP)	;    юдпеяю х  дкхмш
+	POP	<R5,R3> 	; онксвемхе мнбшу
+	PUSH	R0		; бняяр. WM
+	BR	NEWSTR
+;
+ERROR:				; ньхайю
+	TRAP	5
+;
+BLNC:	TRAP	112		;опносяй опнаекнб
+	CMP	R3,R5
+	BHI	ERROR
+	CMPB	#';,@R3
+	RETURN
+;
+OUT:	TST	(SP)+		; нвхярйю ярейю WM
+.IIF EQ,MASINA-BK0010	POP	<@#MASCW>
+	POP	<R5>		; бняяр. жбер,R5
+RET:	CLR	@#SAVJMP
+	JMP	@(R4)+		; !!!!!!!!! бшунд хг $DRAW
+;
+;-----------------------------------------
+;		напюанрйю нрдекэмшу йнлюмд
+;-----------------------------------------
+B$:				; йнл. B--"ондмърне оепн"
+	BIS	#4000,(SP)	; сярюмнбйю ахрю 11 б якнбе оепелеы.
+	BR	AGAIN
+;
+N$:				; йнл. N--бнгбпюр й мскч
+	BIS	#100000,(SP)	; сярюмнбйю ахрю 15-опхгмюй бнгбпюрю й рв.(0,0)
+	BR	AGAIN
+;
+S$:				; йнл. S--сярюмнбйю люяьрюам.йнетт.
+	CALL	$$SENSE		; времхе гмювемхъ
+	TST	R0
+	BNE	1$
+	MOV	#4,R0		; мскебни люяьрюа--слнквюмхе
+1$:	MOVB	R0,$SCRT	; гюяшкйю б якнбн бпюыемхъ-люяьр.
+	BR	AGAIN
+;
+C$:				; йнл. C--сярюмнбйю жберю
+	CALL	$$SENSE		; времхе
+.IF NE,MASINA-BK0010
+	MOV	R3,-(SP)
+	MOV	R0,R3
+	CALL	TSTCOL
+	MOV	R3,@#CHAR
+	MOV	(SP)+,R3
+.IFF
+	TST	R0
+	BEQ	1$
+	CMP	#4,R0		; R0<=4
+	BLO	ERROR		; мер-ньхайю
+	ADD	#220,R0		; R0+220= йндш жбернб:   йпюямши  221
+				;			 гекемши  222
+				;			 яхмхи    223
+				;			 вепмши   224
+	CALL	ISV		; оепедювю йндю б дпюибеп
+.IFTF
+	BR	AGAIN
+.IFF
+1$:
+	MOV	@#FON,@#MASCW
+	BR	AGAIN
+.ENDC
+;
+A$:				; йнл. ю--бпюыемхе няеи
+	CALL	$$SENSE		; онксвемхе гмювемхъ
+	CMP	R0,#4		; опнбепйю цпюмхж
+	BHIS	ERROR
+	MOVB	R0,$SCRT+1	; сярюмнбйю мнбнцн гмювемхъ бпюыемхъ
+JAG:	BR	AGAIN
+;----------------------------------------
+;		бунд дкъ напюанрйх йнл. M
+;----------------------------------------
+M$:
+	PUSH	<R1,R2>		; янупюмемхе йннпдхмюр
+	CALL	$$SIGN		; онксвемхе гмюйю
+	CALL	$$SENSE		; онксвемхе гмювемхъ
+	BIT	#1000,4(SP)	; нрмняхрекэмне ?
+	BEQ	1$		; мер
+	CALL	$$SCALE		; дю--люяьрюахпнбюмхе
+1$:	MOV	R0,R1		; йннпдхмюрю у
+	CALL	BLNC		; опносяй опнаекнб
+	CMPB	#',,(R3)	; "," ?
+	BNE	ERROR		; мер--ньхайю
+	INC	R3		; опносяй ","
+	ASLB	4(SP)		; б WM ахр 1--X,ахр 0--Y
+	ASRB	5(SP)		; януп. опхгмюйю нрмняхр.
+	CALL	$$SIGN		; онксвемхе гмюйю Y
+	CALL	$$SENSE		; онксвемхе гмювемхъ  Y
+	ASLB	5(SP)		; бняярюм. опхгм. нрмняхр.
+	BIT	#1000,4(SP)	; нрмняхрекэмне ?
+	BEQ	2$		; мер
+	CALL	$$SCALE		; дю--люяьрюахпнбюмхе
+2$:	MOV	R0,R2		; ялеыемхе он Y
+	CMP	(SP)+,(SP)+	; сйюгюрекэ ярейю мю WM
+	BIT	#1000,(SP)	; нрмняхрекэмне ?
+	BEQ	MOVIN		; мер- юаянкчр.
+;*******	нрмняхрекэмне
+	MOVB	$SCRT+1,R0	; аюир бпюыемхъ
+	CMP	#2,R0		; ю0 хкх ю1
+	BGT	5$		; дю
+	NEG	R2		; мер--хглемемхе гмюйю дY
+5$:	DEC	R0
+	CMP	#2,R0		; ю1 хкх ю2
+	BLOS	6$
+	NEG	R1		; дю-хглемемхе гмюйю ду
+6$:	ASRB	(SP)		; гмюй "-" опх дY ?
+	BCC	7$		; мер
+	NEG	R2		; дю-хглемемхе гмюйю дY
+7$:	ASRB	(SP)		; гмюй "-" опх ду ?
+	BCC	8$		; мер
+	NEG	R1		; дю--хглемемхе гмюйю ду
+8$:	ASR	R0		; ю0 хкх ю2
+	BCS	9$		; дю
+	MOV	R1,R0		; мер-оепеярюмнбйю
+	MOV	R2,R1
+	MOV	R0,R2
+9$:	ADD	-2(SP),R1	; опхаюбкемхе йннпдхмюр
+	ADD	-4(SP),R2	; опхаюбкемхе йннпдхмюр
+	BR	MOVIN		; оепеунд мю оепелеыемхе
+;-------------------------------------------------------------
+;			бунд  напюанрйх йнл.   R,L,D,U,E,F,G,H
+;-------------------------------------------------------------
+;		R U  L D  R U  L E  H  G  F  E  H  G
+COD:	.BYTE	2,11,3,10,2,11,3,16,13,17,12,16,13,17
+;-------------------------------------------------------------
+RDEG$:
+	SUB	#16,R0		; йнппейжхъ ялеыемхъ
+	ASR	R0		; -----"----"---
+	PUSH	R0		; нябнандхрэ R0 ,янупюмхб б ярейе
+	MOVB	$SCRT+1,R0	; аюир бпюыемхъ хг $SCRT--> б R0
+	ADD	(SP)+,R0	; якнфемхе ялеыемхъ х аюирю бпюыемхъ б R0
+	MOVB	COD(R0),(SP)	; гюякюрэ йнд б якнбн оепелеыемхи
+	CALL	$$SENSE		; онксвхрэ гмювемхе
+	CALL	$$SCALE		; люяьрюахпнбюмхе
+	ASRB	(SP)		; ахр 0-- нрпхжюрекэмши R0 ?
+	BCC	1$		; дю --хглемемхе гмюйю
+	NEG	R0		; -R0
+1$:	ASRB	(SP)		; ахр 1--ялеыемхе он у
+	BCC	2$		; мер
+	ADD	R0,R1		; ялеыемхе он  у
+2$:	ASRB	(SP)		; ахр 2-- хглемемхе гмюйю R0 ?
+	BCC	3$		; мер
+	NEG	R0		; хглемемхе гмюйю
+3$:	ASRB	(SP)		; ахр 3-- ялеыемхе он Y
+	BCC	MOVIN		; мер -оепеунд мю оепелеыемхе
+	ADD	R0,R2		; ялеыемхе он Y
+;----------------------------------
+;			оепелеыемхъ
+;----------------------------------
+MOVIN:
+	ASRB	@SP		; дкъ юаянкчрмнцн M
+	BCC	5$		; Y ян гмюйнл "-" ?
+	NEG	R2		; дю
+;
+5$:
+	MOV	$DRWX,-(SP)
+	MOV	$DRWY,-(SP)
+	CLR	R0		; ярхпюмхе R0=0
+	BIT	#4000,4(SP)	; 11-ахр:пхянбюмхе (0)--оепелеыемхе (1)
+	BNE	1$		; оепелеыемхе
+	INC	R0		; пхянбюмхе--гюохяэ R0=1
+	.LINE			; бейрнп
+1$:	.PSET			; оепелеыемхе--рнвйю
+	TST	4(SP)		; бнгбпюр й опефмхл йннпдхмюрюл?
+	BPL	3$		; мер
+	CLR	R0
+	MOV	(SP)+,R2	; дю- бняярюмнбкемхе йннпдхмюр
+	MOV	(SP)+,R1
+	.PSET
+	BR	4$
+3$:	CMP	(SP)+,(SP)+
+4$:	MOV	#70000,(SP)
+	JMP	AGAIN
+;-----------------------------------------
+;		онксвемхе гмюKю дкъ йнл. л
+;-----------------------------------------
+$$SIGN:
+	CALL	BLNC		; опносяй опнаекнб
+	CMPB	#'+,(R3)	; окчя ?
+	BNE	1$		; мер
+	BIS	#1000,6(SP)	; дю--сярюмнбйю ахрю 9
+	BIC	#1,6(SP)	; Cапня ахрю 0
+	INC	R3		; опносяй "+"
+	BR	2$
+1$:	CMPB	#'-,(R3)	; лхмся ?
+	BNE	2$		; мер
+	BIS	#1001,6(SP)	; дю--сярюмнбйю ахрнб 0 х 9
+	INC	R3		; опносяй "-"
+2$:	RETURN
+;------------------------------------------------------------------
+;		опнцпюллю $$SCALE  йнппейрхпсер R0 б яннрберярбхх я
+;		люяьрюанл, р.е. декхр мю 4 х слмнфюер мю люяьрюамши
+;		йнщттхжхемр,йнрнпши упюмхряъ б лкюдьел аюире $SCRT
+;------------------------------------------------------------------
+$$SCALE:
+	PUSH	<R1,R2,R3>	; нябнандхрэ R1,R2,R3 Dкъ слмнфемхъ
+	MOV	#8.,R2		; вхякн пюгпъднб-вхякн якнфемхи
+	CLR	R1		; мюйнохрекэ опнхгбедемхъ
+	MOVB	$SCRT,R3	; лмнфхрекэ
+1$:	ROR	R3		; пюгпъд лмнфхрекъ б ахр я
+	BCC	2$		; мнкэ
+	ADD	R0,R1		; едхмхжю--якнфемхе
+2$:	CMP	R2,#7		; дкъ пюгпъднб 0 х 1
+	BLT	3$
+	ASR	R1		; ядбхц опнхгбедемхъ (декемхе мю 4)
+	BR	4$
+3$:	ASL	R0		; дкъ нярюкэмшу-ядбхц лмнфхрекъ
+4$:
+	SOB	R2,1$		; бяе пюгпъдш ?
+	MOV	R1,R0		; пегскэрюр -б R0
+	POP	<R3,R2,R1>	; бняярюмнбхрэ R1 х R2
+	RETURN
+;-------------------------------------------------------------------
+;		опнцпюллю $$SENSE бнгбпюыюер б R0 гмювемхе йнмярюмрш
+;		хкх оепелеммни (йнмярпсйжхх =<хлъ> )
+;-------------------------------------------------------------------
+$$SENSE:
+	CLR	R0		; слнквюмхе
+	TRAP	112		; опносяй опнаекнб
+	CMPB	@R3,#';
+	BNE	1$
+	INC	R3		; опносяй ";"
+6$:	RETURN
+1$:	CMP	R3,R5
+	BHI	6$
+;
+	CMPB	#'=,(R3)	; йнмярпсйжхъ =<хлъ>
+	BNE	2$		; мер-йнмярюмрю
+	INC	R3		; опносяй "="
+	CALL	BLNC		; опносяй опнаекнб
+	CALL	$VALUE		; времхе гмювемхъ б ярей
+	CALL	BLNC		; опносяй опнаекнб
+	BEQ	3$		; нцпюмхвхрекэ- ";" ? дю
+	JMP	ERROR		; ньхайю
+2$:
+	CMPB	#'9,(R3)	; жхтпю ?
+	BLO	5$
+	CMPB	#'0,(R3)
+	BHI	5$
+	CALL	$CONST		; времхе йнмярюмрш
+	TRAP	112		; опносяй опнаекнб
+	CMPB	@R3,#';
+	BNE	4$		; мер ";"
+3$:	INC	R3		; опносяй ";"
+4$:
+	POP	R0
+;
+5$:	RETURN
+;
+.IF EQ,1
+$LCOP::	MOV	@#ANVP,-(SP)	; PRADINIS ADRESAS
+	ADD	@#BAZVP,@SP
+	MOV	@#FON,R2	; EKRANO FONAS
+	MOV	#21000,R1	; EILUCIU SK.(NEISPLESTA ATMINTIS)
+	CMP	@#DVPB,#40000
+	BNE	1$
+	MOV	#3000,R1	; EILUCIU SK.(ISPLESTA ATMINTIS)
+;
+1$:	TST	@SP		; AR ADRESAS NE UZ EKR. ATMINTIES RIBU
+	BPL	2$
+	SUB	@#DVPB,@SP
+;				IS 7 EKR. ATMINTIES ZODZIU FORMUOJAMI
+;				8 STULPELIAI IR ISVEDAMI I PRINTERI
+;
+2$:	MOV	#3,R3		; R3 - IS KURIU BITU FORM. STULPELIS
+3$:	MOV	@SP,R5
+	MOV	#2,R0		; R0 FORMUOJAMAS ISVEDAMAS STULPELIS
+4$:	MOV	@R5,-(SP)
+	COM	@SP
+	XOR	R2,@SP		; 2 FONO SPALVOS BITAI PERVEDAMI I 0,
+	BIT	R3,(SP)+	; 2 KT. SPALVOS BITAI - I 1
+	BNE	6$
+	INC	R0
+;
+5$:	ADD	#100,R5		; SEKANCIO STULPELI FORMUOJANCIO
+	BPL	6$		; ZODZIO ADRESAS
+	SUB	@#DVPB,R5
+;
+6$:	ASLB	R0		; DAR NEBAIGTAS STULPELIS?
+	BCC	4$		; NE-KARTOJAM
+	COM	R0		; BAIGTAS
+	MOVB	R0,@#SIMB	
+	JSR	R5,OUT		; I PRINTERI
+PAR1:	.WORD	6
+	.BYTE	33,131,1,33,117
+SIMB:	.BLKB	1
+	.EVEN
+;
+	DEC	R1
+	ASL	R3
+	ASL	R3		; DABAR BUS TIKRINAMI KITI 2 BITAI
+	BNE	3$
+	ADD	#2,@SP
+	TSTB	R1
+	BNE	1$
+	JSR	R5,OUT		; PRINTERIO GALVUTE PERVEDAMA I KITA EILUTE
+PAR2:	.WORD	12
+	.BYTE	33,132,7,33,130,0,0,33,1,0
+	.EVEN
+	ADD	#600,@SP	; PASIRUOSIMAS KT. EILUTES ISVEDIMUI
+	TST	R1		; DAR REIKIA?
+	CLR	(SP)+
+	JMP	@(R4)+
+;
+OUT:	MOV	R3,-(SP)	; PERDUODAMA I PRINTERI BAITU SEKA
+	MOV	R2,-(SP)
+	MOV	R1,-(SP)
+	MOV	#ARPORT,R1	; UOSTO ADRESAS
+	MOV	#400,R2		; PASIRUOSIMO BITAS
+	MOV	(R5)+,R0	; SKAITLIUKAS
+10$:	BIT	R2,@R1
+	BEQ	10$		; PRINTERIS PASIRUOSES?
+	MOVB	(R5)+,R3
+	BIC	#177400,R3
+	MOV	R3,@R1
+	BIS	R2,R3
+	MOV	R3,@R1
+20$:	BIT	R2,@R1		; PRIEME?
+	BNE	20$
+	CLR	@R1
+	SOB	R0,10$		; JAU VISI?
+	MOV	(SP)+,R1
+	MOV	(SP)+,R2
+	MOV	(SP)+,R3
+	RTS	R5
+;
+	.ENDC
+	.ENDC
+	.END

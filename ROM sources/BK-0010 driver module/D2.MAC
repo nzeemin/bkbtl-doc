@@ -1,0 +1,461 @@
+
+
+
+
+
+;  **********************************************
+;  *                                            *
+;  *    д п ю и б е п    й к ю б х ю р с п ш    *
+;  *                                            *
+;  **********************************************
+
+
+
+;   =======================
+;   *** йнмярюмрш DKLAW ***
+;   =======================
+
+
+	AWPKL1	= 60		;- юдпея бейрнпю оп. йкюб.1
+	AWPKL2	= 274		;- юдпея бейрнпю оп. йкюб.2
+	ARSKL	= 177660	;- юдпея пец.янярнъмхъ йкюб.
+	ARDKL	= 177662	;- юдпея пец.дюммшу йкюб.
+
+	ASPORT	= 177716	;- юдпея яхярелмнцн онпрю
+	APRWK	= 262		;- юдпея опхгмюйю бй
+	KPOWTS	= 20000		;- йнмярюмрю онбрнпю яхлбнкю
+	KPOWTG	= 4000		;- йнмярюмрю онбрнпю цр
+
+
+
+
+
+; ======================================
+; ***** лндскэ хмхжхюкхгюжхх DKLAW *****
+; ======================================
+
+
+
+
+MIDKLW:	MOV	#BCTKW1,@#AWPKL1	;- сяр. бйк1
+	MOV	#200,@#AWPKL1+2
+
+	MOV	#BCTKW2,@#AWPKL2	;- сяр. бйк2
+	MOV	#200,@#AWPKL2+2
+
+	CLR	APOPKL		;- яапня пефхлю опепшбюмхъ
+	CLR	PRWK		;- яапня опхгмюйю йндю бй
+	CLR	@#ARSKL		;- яапня люяйх опепшбюмхъ
+
+	RTS	PC
+
+
+
+
+
+; ==============================
+; ***** лндскэ времхъ йндю *****
+; ==============================
+
+
+MCTKOD:	;бшунд:	R0 - йнд б лк.аюире
+
+
+
+;   =================================
+;   *** 1. акнй сопюбкемхъ MCTKOD ***
+;   =================================
+
+
+BUMCTK:	MOV	@#ARDKL,R0	;- тхйрхбмне времхе йкюб.
+
+1$:	TSTB	PRZKB		;  времхе йндю я йкюбхюрспш
+	BEQ	2$
+	CLR	R0
+	BISB	BUFKL,R0
+	CLRB	PRZKB		;- пюгпеьемхе гюохях йндю б астеп
+	RTS	PC
+
+2$:	TSTB	SCKLC		;  йкчв
+	BEQ	3$
+	JSR	PC,PZKKLC
+	BR	1$
+
+3$:	TSTB	SCTAB		;  рюаскъжхъ
+	BEQ	4$
+	JSR	PC,PZKTAB
+	BR	1$
+
+4$:	TSTB	PRPOWT		;  онбрнп
+	BEQ	5$
+	JSR	PC,PPOWT
+	BR	1$
+
+5$:	MTPS	#0		;- пюгпеьемхе опепшбюмхъ
+	BR	1$
+
+
+
+;   ========================================
+;   *** 2. акнй времхъ йндю он бейрнпс 1 ***
+;   ========================================
+
+
+BCTKW1:	JSR	R4,PSREG0
+	MOV	R5,-(SP)
+
+	JSR	PC,PCTK		;  времхе йндю
+
+	CMPB	R0,#20		;  йндш пефхлнб йкюб.
+	BHI	1$
+
+	MOV	R0,R1		;  бшанп йндю
+	SUB	#12,R1
+	BMI	2$
+	ASL	R1
+	ADD	R1,PC
+	BR	3$
+	BR	2$
+	BR	2$
+	BR	4$
+	BR	5$
+	BR	6$
+	BR	7$
+
+3$:	TST	@#APRWK		;  оя
+	BEQ	2$
+	MOV	#15,R0
+	BR	2$
+
+5$:	MOVB	#200,PRRUS	;  пся
+	BR	9$
+
+6$:	CLRB	PRRUS		;  кюр
+9$:	CLR	R0
+	CLR	SCKOD
+	JSR	PC,PFINDR
+	BR	KCTKW1
+
+7$:	CLR	R3		;- яап. рюа.
+4$:	JSR	PC,PUTAB	;- сяр. рюа.  
+	BR	KCTKW1
+
+1$:	CMPB	R0,#77		;  лндхт. йндю
+	BLOS	2$
+	BISB	PRRUS,R0
+
+2$:	JSR	PC,PZKBUF	;  гюохяэ йндю б астеп
+
+KCTKW1:	MOV	(SP)+,R5
+	JSR	R4,PWREG
+
+	RTI
+
+
+;    ------------------------------
+;    ** 2.1. сярюмнбйю рюаскъжхх **
+;    ------------------------------
+
+PUTAB:	JSR	PC,POPSIM	;  нопед. онг. яхлбнкю
+
+	TST	R3		;  сяр. рюа.
+	BEQ	1$
+	BIS	R0,MTAB(R1)
+	BR	2$
+
+1$:	BIC	R0,MTAB(R1)	;  яап. рюа.
+
+2$:	JSR	PC,PFINDT	;  сярюмнбйю хмдхй.рюа.
+
+	RTS	PC
+
+
+
+;   ========================================
+;   *** 3. акнй времхъ йндю он бейрнпс 2 ***
+;   ========================================
+
+
+BCTKW2:	JSR	R4,PSREG0
+	MOV	R5,-(SP)
+
+	JSR	PC,PCTK		;  времхе х лндхт. йндю
+	BISB	#200,R0
+
+	CMPB	R0,#277		;  йндш онксцпютхйх
+	BLOS	1$
+	BICB	#100,R0
+	BISB	#40,R0
+	BR	2$
+
+1$:	CMPB	R0,#271		;  йкчвх
+	BHI	3$
+	MOV	R0,R1
+	SUB	#260,R1
+	BMI	3$
+	TSTB	SCKLC
+	BNE	KCTKW2
+	ASL	R1
+	MOV	AKLC(R1),TAKLC	;- гюосяй йкчвю
+	BEQ	KCTKW2
+	MOVB	@TAKLC,SCKLC
+	INC	TAKLC
+	JSR	PC,PZKLC1
+	BR	KCTKW2
+
+3$:	CMPB	R0,#237		;  йндш пефхлнб дхяокеъ
+	BLOS	4$
+	BICB	#40,R0
+	BISB	#20,R0
+	CMPB	R0,#232		;- цюь. й.
+	BEQ	8$
+	CMPB	R0,#235		;- хмб. щ.
+	BEQ	8$
+	CMPB	R0,#236		;- сяр.хмд.
+	BNE	2$
+
+8$:	EMT	FSIM		;- хяс,акп,цюь.й,хмб.щ,сяр.хмд
+	BR	KCTKW2
+
+4$:	CMPB	R0,#211		;  рюа
+	BLO	5$
+	BNE	6$
+	JSR	PC,PTAB
+	BR	KCTKW2
+
+5$:	CMPB	R0,#204		;  акп,хяс
+	BHI	7$
+
+	CMPB	R0,#201		;  онбрнп
+	BHI	8$
+	BNE	7$
+	INCB	PRPOWT
+	JSR	PC,PPOWT1
+	BR	KCTKW2
+
+7$:	BIS	#20,R0		;  цпют. йндш х ьюц
+	BR	2$
+
+6$:	CMPB	R0,#212		;  нярюмнб
+	BNE	9$
+10$:	TSTB	@#ARSKL
+	BPL	10$
+	JSR	PC,PCTK
+	BR	KCTKW2
+
+9$:	CMPB	R0,#213		;  яап.й.ярп.
+	BNE	2$
+	MOV	#231,R0
+
+2$:	JSR	PC,PZKBUF	;  гюохяэ йндю б астеп
+
+
+KCTKW2:	MOV	(SP)+,R5
+	JSR	R4,PWREG
+
+	RTI
+
+
+;    ----------------------------
+;    ** 3.1. гюохяэ йндю йкчвю **
+;    ----------------------------
+
+PZKKLC:	MOVB	@TAKLC,R0
+	JSR	PC,PZKBUF
+	INC	TAKLC
+	DECB	SCKLC
+	BEQ	KZKKLC
+PZKLC1:	TST	@#APOPKL	;- пефхл опеп.
+	BNE	PZKKLC
+
+KZKKLC:	RTS	PC
+
+
+;    --------------------
+;    ** 3.2. рюаскъжхъ **
+;    --------------------
+
+PTAB:	JSR	PC,POPSIM	;  нопед. онг. яхлб.
+
+	MOVB	#1,SCTAB	;  онхяй онгхжхх
+	ASL	R0
+	BCS	1$
+2$:	BIT	R0,MTAB(R1)
+	BNE	PZKT1
+	INCB	SCTAB
+	ASL	R0
+	BCC	2$
+
+1$:	ADC	R0		;  хглемемхе юдп. якнбю
+	ADD	#2,R1
+	CMP	R1,#4
+	BLO	2$
+	TSTB	PRCW
+	BNE	PZKT1
+	CMP	R1,#10
+	BNE	2$
+
+PZKT1:	TST	@#APOPKL	;  гюохяэ йндю рюаскъжхх
+	BEQ	KTAB
+PZKTAB:	MOV	#40,R0
+	JSR	PC,PZKBUF
+	DECB	SCTAB
+	BNE	PZKT1
+
+KTAB:	RTS	PC
+
+
+;    -----------------
+;    ** 3.3. онбрнп **
+;    -----------------
+
+PPOWT:	JSR	PC,PZKB1
+	MOV	BKPOWT,R0	;- гюдепфйю
+1$:	SOB	R0,1$
+	BIT	#100,@#ASPORT	;- опнбепйю пеф. онбр.
+	BEQ	PPOWT1
+	CLRB	PRPOWT
+	BR	KPOWT
+PPOWT1:	TST	@#APOPKL	;- пефхл опеп.
+	BNE	PPOWT
+
+KPOWT:	RTS	PC
+
+
+
+
+
+; ================================
+; ***** лндскэ времхъ ярпнйх *****
+; ================================
+
+
+;	бунд:	R1 - юдпея ярпнйх
+;		R2 - дкхмю ярпнйх (лк.а.),яхлб.нцпюмхв.(яр.а.)
+
+
+MCTSTR:	MOV	R0,-(SP)
+
+	MOV	R2,R5		;  ондцнрнбйю нцпюмхв.
+	SWAB	R5
+	BIC	#177400,R2
+	MOV	R2,-(SP)
+
+1$:	EMT	CTKOD		;  времхе яхлбнкю
+	CMPB	R0,#30		;- юмя
+	BNE	2$
+	CMP	R2,(SP)
+	BEQ	1$
+	DEC	R1
+	ADD	#2,R2
+	BR	3$
+2$:	MOVB	R0,(R1)+
+3$:	EMT	FSIM
+
+	CMPB	R0,R5		;  опнбепйю нцпюмхв.
+	BEQ	KCTSTR
+	SOB	R2,1$
+
+KCTSTR:	MOV	(SP)+,R0
+	MOV	(SP)+,R0
+	RTS	PC
+
+
+
+
+
+; ===================================
+; ***** лндскэ сярюмнбйх йкчвеи *****
+; ===================================
+
+
+;	бунд:	R0 - мнлеп йкчвю
+;		R1 - юдпея рейярю йкчвю
+
+
+MUKLC:	TST	R0		;  опнбепйю мнлепю йкчвю
+	BLE	KUKLC
+	CMP	R0,#12
+	BHI	KUKLC
+	BNE	1$
+	CLR	R0
+
+1$:	ASL	R0
+	MOV	R1,AKLC(R0)	;  сярюмнбйю йкчвю
+
+KUKLC:	RTS	PC
+
+
+
+
+;  ======================================
+;  **** ахакхнрейю ондопнцпюлл DKLAW ****
+;  ======================================
+
+
+
+;    ----------------------
+;    ** 0.1. времхе йндю **
+;    ----------------------
+
+PCTK:	TST	SCUIND		;  сяр. хмдхйюрнпнб
+	BEQ	4$
+	JSR	PC,PUINDR
+4$:	MOV	#177777,SCKOD
+
+PSIGN:	MOV	#50,R2		;  яхцмюк
+	MOV	#100,R3
+3$:	MOV	#320,@#ASPORT	;- 1
+	MOV	R3,R0
+1$:	SOB	R0,1$
+	MOV	#220,@#ASPORT	;- 0
+	MOV	R3,R0
+2$:	SOB	R0,2$
+	DEC	R3
+	SOB	R2,3$
+	MOV	@#ASPORT,R0	;- яапня опхгм. ярно
+
+	MOVB	@#ARDKL,R0	;- времхе йндю
+	RTS	PC
+
+
+;    ------------------------------
+;    ** 0.2. гюохяэ йндю б астеп **
+;    ------------------------------
+
+PZKBUF:	TSTB	PRZKB		;  гюохяэ йндю б аст.
+	BNE	PZKB2
+	MOVB	R0,BUFKL
+PZKB1:	INCB	PRZKB
+
+PZKB2:	MOV	@#APOPKL,R5	;  оепедювю соп. он опепшбюмхч
+	BEQ	KZKBUF
+	JSR	PC,(R5)
+
+KZKBUF:	RTS	PC
+
+
+;    -----------------------------------------------
+;    ** 0.3. нопедекемхе онгхжхх яхлбнкю б ярпнйе **
+;    -----------------------------------------------
+
+POPSIM:	MOV	NOMSIM,R1	;  ондц. яв. онг.
+	BIC	#177700,R1
+	TSTB	PRCW
+	BEQ	1$
+	ASR	R1
+
+1$:	MOV	R1,R2		;  нопед. онг. б якнбе
+	BIC	#177760,R2
+	INC	R2
+	CLR	R0
+	SEC
+2$:	ROL	R0
+	SOB	R2,2$
+
+	BIC	#177717,R1	;  нопед. якнбю
+	ASR	R1
+	ASR	R1
+	ASR	R1
+
+	RTS	PC
